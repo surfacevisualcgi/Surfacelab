@@ -12,6 +12,7 @@ import { PaginaCalculadora } from './features/calculadora/PaginaCalculadora';
 import { PaginaOrcamentos } from './features/orcamentos/PaginaOrcamentos';
 import { PaginaOrcamentoDetalhe } from './features/orcamentos/PaginaOrcamentoDetalhe';
 import { PaginaPedidos } from './features/pedidos/PaginaPedidos';
+import { PaginaOrdemProducao } from './features/pedidos/PaginaOrdemProducao';
 import { PaginaEstoque } from './features/estoque/PaginaEstoque';
 import { PaginaClientes } from './features/clientes/PaginaClientes';
 import { PaginaFornecedores } from './features/fornecedores/PaginaFornecedores';
@@ -57,6 +58,7 @@ export default function App() {
             <Route path="/orcamentos" element={<PaginaOrcamentos />} />
             <Route path="/orcamentos/:id" element={<PaginaOrcamentoDetalhe />} />
             <Route path="/pedidos" element={<PaginaPedidos />} />
+            <Route path="/producao/:id" element={<PaginaOrdemProducao />} />
             <Route path="/estoque" element={<PaginaEstoque />} />
             <Route path="/clientes" element={<PaginaClientes />} />
             <Route path="/fornecedores" element={<PaginaFornecedores />} />
