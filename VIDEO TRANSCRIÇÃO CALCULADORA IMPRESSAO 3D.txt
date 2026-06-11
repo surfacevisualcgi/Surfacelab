@@ -1,0 +1,172 @@
+
+00:00:00 - 00:01:01
+Salve salve rapaziada, sejam todos   bem-vindos a mais um vídeo aqui no Zoom   Digital, vídeo sobre impressão 3D. Quero   falar com vocês sobre como eu utilizei   inteligência artificial para criar uma   calculadora pra gente poder ver ali os   custos da nossa impressão 3D. Isso é   muito importante, principalmente para   quem quer colocar suas peças para vender   e não quer ficar toda hora ali fazendo   ajuste ou então fazendo cálculos muito   complexos, você joga no sistema e ele já   te entrega. Pessoal, essa aqui é uma   versão 2.0 da minha calculadora de   precificação para impressão 3D. E é   muito simples de você utilizar e de você   programar. Eu tô aqui com a tela do meu   computador aberta porque a gente   publicou lá nos nossos RS, né,   recentemente e aí vários de vocês eh   disseram que queria um tutorial de como   montar esse sistema aqui pra impressora   3D. Então a gente tem aqui o vídeo. Essa   calculadora revoluciona a precificação   de impressão 3D. Então, muita gente
+
+
+00:00:59 - 00:01:26
+  pediu tanto o link, né, que vai estar   disponível na descrição desse vídeo,   assim como eu utilizei a inteligência   artificial para desenvolver esse   programa. Então, vamos lá. Primeira   coisa que eu vou fazer, pessoal, é   mostrar aqui para vocês o que tem a   nossa calculadora, né? Que eu acho que é   muito importante a gente entender, né? E   ver o que é principal, que é como que eu   quero que o meu sistema funcione, o que   que eu preciso de funcionalidade nele.
+
+
+00:01:23 - 00:01:48
+  Cada um vai ter a tua especificidade e   com o que eu vou passar aqui para vocês,   eu quero mostrar como criar esse   programa. Bom, pessoal, eu tenho aqui,   né, Live preview, como vocês estão   vendo, a minha calculadora de impressão   3D. Eu posso até clicar aqui em   compartilhar, ele vai criar um link para   mim, esse link que vai estar disponível   aí para vocês.
+
+
+00:01:42 - 00:02:44
+ E aqui nessa tela a gente   consegue ver eh até ampliada a nossa   calculadora. O que que eu coloquei aqui   nela? O que que eu quero que ela   tivesse, né? O nome do projeto, que aí   eu consigo, ah, tô imprimindo aqui, por   exemplo, um exército de Papai Noéis.   Então, botar aqui Papai   Noel.   quantidade de peças finalizadas. Na   impressão que eu tô fazendo agora,   embora seja uma impressão direta, uma   impressão única, eu vou ter ao final   dela algo em torno de 15 a 19 peças   individuais, né? Depende ali da minha da   perda que eu vou ter ao final dessa   impressão, se eu tiver, mas acredito que   não. Então vamos supor que eu tenha no   final 19 peças. Isso é muito importante   porque a gente tem o custo de uma   impressão como um todo, né? eh o custo   da mesa e a gente tem o custo unitário   de cada peça, né? A gente consegue   precificar. Ah, Felipe, mas não é   simplesmente eu pegar e eh dividir, se
+
+
+00:02:41 - 00:03:13
+  eu tô tendo R$ 30 de custo aqui nessa   mesa, é só se eu vou ter 20 peças ali   prontas ao final, é só eu dividir para   saber o custo de cada uma. Mais ou   menos. Não necessariamente é assim. E eu   vou te dizer porquê. Quando a gente tem,   porém, principalmente aqui, que eu tô   utilizando o sistema do AMS, a gente tem   a purga, a gente tem o gasto em relação   a troca de filamento, né? E aí, se eu   imprimir uma peça ou imprimir 20, o   custo da troca ali vai ser o mesmo.
+
+
+00:03:11 - 00:03:29
+  Inclusive o tempo, considerando ali o   tempo que a minha impressora leva para   calibrar o fluxo, para calibrar a mesa,   para fazer todas as calibragens, se eu   imprimir peça por peça, eu vou ter um   custo específico. Se eu imprimir uma   mesa com várias peças, eu vou ter um   custo por peça menor.
+
+
+00:03:26 - 00:03:52
+ Por isso que é   importante a gente conseguir entender   quantas peças a gente produz com uma   mesa, né? Então o preço é assim   diferente. Até porque imagina a seguinte   situação. Se aqui eu tenho a impressão   de 20 Papais Noéis distintos, se a   pessoa vai falar: "Ah, Felipe, eu quero   só um, né? E aí, se eu imprimir só um,   com certeza eu vou ter um custo maior do   que se eu imprimir 20, né? Então eu vou   colocar aqui a quantidade de peças.
+
+
+00:03:47 - 00:04:12
+ Peso   total, gente. Peso total é bem simples.   Basta eu colocar aqui quanto que eu vou   gastar, quantas gramas de filamento eu   vou gastar naquele, naquela impressão.   Vamos supor que eu gaste aqui 300 g e o   tempo total que a minha impressora vai   levar. Nesse caso aqui, nessa peça   específica, ele vai levar algo em torno   aí de 18 horas para finalizar.
+
+
+00:04:07 - 00:04:33
+ Então,   colocando aqui os 18 e a calculadora já   me dá automaticamente o preço do projeto   completo, já que são 19, vamos   arredondar aqui para 20. Vamos supor que   sejam 20 peças, ele já me dá o custo por   unidade, né? Ele me dá quanto que eu   teria de de lucro e quanto que eu seria   o custo final ali pro meu cliente.
+
+
+00:04:27 - 00:05:00
+ Olha   que bacana, ele me dá que o lucro eh   considerando que eu venda o todas as   peças ali por R$ 126, seria de 100%. Ah,   Felipe, da onde que é esse 100% de   lucro? Ele tá aqui, olha, lucro   desejado, 100%, né? Então eu eh   programei para que eu tivesse ali o   lucro de 100%. E aí ele já me dá o gasto   que eu vou ter de filamento, de energia,   de desgaste da minha impressora, o   risco.
+
+
+00:04:55 - 00:05:29
+ Vamos supor que dessa impressão   de 20 personagens eu sempre perca ali   dois pelo menos. Então vou colocar um   risco ali de 10% de perda. Isso tem que   constar, né? Porque você tá perdendo   material e tudo mais.   E outra coisa também que é importante a   gente considerar é o desgaste da nossa   impressora, pessoal. E o desgaste ele   pode ser um pouco relativo, tá? Você   pode ter problemas com a sua impressora,   com poucas horas de uso de impressão, ou   você pode passar ali horas e horas   imprimindo e quase não ter custo.
+
+
+00:05:24 - 00:05:49
+ Eu,   especificamente com a minha Bambulábia 1   aqui, já troquei o noise, né? Já troquei   o bico, já troquei o sensor de   aquecimento do Hot End, já troquei cabo   PTFe, já troquei uma série de itens na   minha impressora que obviamente me deu   um custo a mais para continuar fazendo   ela funcionar.
+
+
+00:05:44 - 00:06:08
+ E como que a gente estima   esse custo? Com base no próprio preço da   impressora, né? Tem o custo de   manutenção, que são as peças que a gente   troca ali constantemente, que são   materiais de desgaste natural. E tem   também eh o quanto a nossa impressora   tem de expectativa de vida. Eu   considerei para minha bambulábia 1 algo   em torno de 4.000 horas de impressão.
+
+
+00:06:06 - 00:06:28
+  Óbvio que aqui é uma estimativa, ela   pode imprimir muito mais. Essa   impressora, principalmente se você   manter a manutenção dela em dia, a   tendência é que você consiga imprimir   bastante com ela. Então, na época eu   paguei R$ 6.000 na minha Bambulábia 1   com AMS. dividindo por   [limpando a garganta] 4.
+
+
+00:06:23 - 00:06:49
+000 horas, a   gente vai ter o custo de 1,50. Ou seja,   se eu fizer um projeto que vai me   consumir 18 horas de impressão, em tese,   eu tô atingindo ali, chegando próximo   daquelas 4.000 horas de impressão.   Então, se eu tenho eh esse esse   percentual, eu tenho que calcular isso   como margem de manutenção, porque uma   hora, né, a pode ser com 1000, 4.
+
+
+00:06:44 - 00:07:10
+000 ou   10.000 horas de impressão, uma hora a   tendência expectativa é que a impressora   pare, né? Não sei. Então a gente   considera também o custo de desgaste, o   risco. E aí essa impressora, o que que   ela faz? A gente coloca aqui também o   custo que a gente teve no nosso   material, no caso PLA, eh custos extras,   porque eu posso muitas vezes fazer um   chaveiro, fazer um íã, então vou   precisar ter gasto com íã.
+
+
+00:07:06 - 00:07:31
+ Vou fazer um   chaveiro, vou precisar da presilha do   chaveiro, se for brinco. Então vamos   supor que o íã me custou aqui R$ 10 para   essa peça. Vou colocar aqui embalagem,   vou enviar pros correios, vou ter custo   com embalagem. R$ 10 a embalagem. Então   aqui a gente já tem um cálculo completo,   tanto de custos totais, né, de filamento   aqui em casa.
+
+
+00:07:26 - 00:07:50
+ E um detalhe importante   que eu já compartilhei com vocês é que   eu tenho energia solar, então na   prática, de dia eu não gasto com energia   elétrica, né, quando ela tá imprimindo   de dia. Então esse custo de energia aqui   é somente para estimativa, né? Eu   poderia até mesmo desconsiderar ela. Por   isso que essa nossa calculadora ela traz   cada gasto de forma individualizada.
+
+
+00:07:45 - 00:08:09
+ Se   eu quiser, eu posso considerar apenas o   gasto do filamento, posso desconsiderar   o gasto do desgaste, posso fazer da   forma que eu quiser, né? E aqui no final   a gente tem um raio X visual, né?   Dizendo quanto que eu gastei com   material, energia, risco e extras. Eu   posso também, pessoal, vir aqui e   salvar, né, essa planilha.
+
+
+00:08:05 - 00:08:26
+ Ele vai   salvar aqui no meu histórico. Então,   vamos supor que eu tô fazendo a   precificação ali de vários itens, né? De   vários itens. é o Papai Noel, é o boneco   de neve, é o brinquedo ali que eu vou   vender. Então eu posso ir adicionando   aqui nessa minha planilha. Deixa eu só   ver aqui.
+
+
+00:08:21 - 00:09:22
+ Ele adiciona, ainda que seja   de forma repetitiva. E aí eu posso   também exportar para CSV. Olha, já tenho   aqui a exportação para CSV de forma   direta. Ó lá, tabelinha feita, bonita,   tudo organizadinho. Posso copiar para   colar lá no Google Sheets, né, que é a   planilha do Google. E uma coisa bem   legal que eu coloquei aqui nesse sistema   é a possibilidade de enviar pro   WhatsApp, né? Então, se eu clicar, ele   já me traz aqui o orçamento do Papai   Noel no valor de R$ 152, né? Que é o   preço estimado aqui do projeto por eh   completo. Então já consigo até mesmo   enviar pro WhatsApp. Se eu vier em   histórico, eu posso exportar toda essa   tabela aqui pra CSV também. E aí eu   tenho o custo de todos os itens. Vocês   percebem que aqui eu consigo otimizar   muito, né, a minha precificação. E   obviamente eu tenho a parte aqui de   ajustes, aonde eu posso ajustar o meu   consumo de watts. Isso vai depender   muito da localização que você tá, o   custo da energia, o preço que você pagou   na máquina, que vai interferir   diretamente no custo por vida útil, que
+
+
+00:09:20 - 00:10:22
+  vai ver ali na questão do desgaste.   Temos aqui o custo do quilo padrão, o   lucro mínimo. Então, a gente tem várias   vários ajustes pré-moldados. Então,   resumo da história, o que que a gente   tem de funcionalidade nessa nossa   planilha? E aí eu pedi pro próprio   Gemina aqui trazer pra gente custo de   material, energia, depreciação, custos   extras, margens e margem de risco,   lucro, preço unitário, entradas   inteligentes, tempo eh peso, salvamento,   histórico, envio pro WhatsApp, Google   Sheets, gera arquivos. Então, a gente   tem todas as funcionalidades dessa nossa   planilha. Por que que isso é importante?   você pode querer é uma plan um sistema   que seja diferente do meu, que tenha   algo que só você precisa. Então é   importante a gente saber o que que a   gente quer que o sistema nos retorne.   Então eu vou pegar   simplesmente vou copiar abrindo o   Gemini. E aí eu poderia até utilizar o   chat GPT também, mas é eu utilizei o   Gemini, que inclusive ele já me dá uma   possibilidade de compartilhar essa
+
+
+00:10:19 - 00:10:42
+  aplicação com link. É bem legal. E aí eu   vou vir aqui, vou colocar na parte de   raciocínio, né, que é a parte mais   avançada do Gemini para programação. É   bem legal. E eu vou utilizar esse   recurso aqui do canvas, tá gente? É   muito importante selecionar esse recurso   do canvas.
+
+
+00:10:35 - 00:11:08
+ e vou colocar, quero que você   crie um sistema com [roncando] estas   funcionalidades.   E aí, simplesmente vou colar, vou dar um   enter e vou esperar ele fazer toda a   programação de maneira automatizada, né?   Vão, ele vai calcular os custos, ele vai   me dar o sistema, a gente vai aguardar   aqui ao final e eu vou mostrar um   sistema que eu tô fazendo somente com as   características que eu puxei do sistema   que a gente já lançou, tá? Da   calculadora do Zoom Digital.
+
+
+00:11:04 - 00:11:28
+ Você pode   inclusive pegar esses parâmetros e você   mesmo mencionar ali pro Gemini, né,   paraa inteligência artificial. Olha, eu   quero um sistema que tenha isso, aquilo,   quero que não tenha isso, de acordo com   as suas necessidades. E aqui você   percebe que ele já tá criando, ele já tá   criando o código de forma totalmente   automatizada aqui.
+
+
+00:11:21 - 00:11:57
+ Olha, então ele vai   criar toda essa codificação.   E o legal, pessoal, que você pode   utilizar isso aqui à não simplesmente   para fazer um sistema de de controle de   da tua impressão 3D de custos, né? Você   pode fazer um sistema de controle de   estoque, né? Você pode fazer um sistema   de controle de tempo de envio, né? Então   você pode eh utilizar a inteligência   artificial para criar os mais variados   tipos de sistema, né? Perceba que eu   consigo fazer isso sem nenhum   conhecimento de programação.
+
+
+00:11:53 - 00:12:19
+ O que eu   preciso ter de conhecimento é saber o   que eu quero, que é muito importante,   né? Saber o que eu quero que aquele   sistema me entregue e depois também   simplesmente pedir pra inteligência   artificial. Ao final dele criar esse   código, a gente vai clicar nesse   botãozinho aqui de preview, que ainda   não tá habilitado para mim, justamente   porque ele não terminou a linha de   programação, né? As linhas de   programação.
+
+
+00:12:17 - 00:12:49
+  Só antigamente pra gente fazer um   sistema desse aqui era horas de   programação, corrigindo erro. Eu fiz   técnico de informática, aprendi Pascal,   Delfi, Visual Basic, cara, e era   terrível fazer um sisteminha simples de   uma calculadora ou de controle de   estoque. Hoje em dia, com comando, a   gente consegue ter um sistema aqui que   eu considero até mesmo avançado, né? Um   sistema que pelo que ele entrega, né,   muito provavelmente te cobrariam bem   caro para ter um sistema desse aqui.
+
+
+00:12:44 - 00:13:19
+ Ele   já tá finalizando o meu código e eu já   posso clicar aqui em preview, né? E você   percebe que eu tenho todas aquelas   funcionalidades aqui já prontas.   Lembrando que eu não fiz nada. Você vê   que esse sistema tá diferente daquele   nosso original, né? Daquele que foi   compartilhado lá com vocês. Ele   utilizou, né? De acordo com ele aqui,   ele utilizou uma formatação um pouco   diferente, mas as funcionalidades estão   aqui presentes, né? Vamos supor Papai   Noel.
+
+
+00:13:16 - 00:13:53
+  Vamos clicar aqui em preview.   Ele não tá me permitindo. Vou clicar em   que em share e abrir ele de forma   individualizada, igual eu fiz útima vez.   E vamos lá, papai.   Ó, aqui ele tá dando um erro que ele não   tá me permitindo escrever, né? Eu coloco   aqui, ele me permite escrever página por   página, eh, letra por letra, né? tempo   de impressão   aqui tá funcionando a calculadora, mas   eu vou colocar aqui para ele, ó.
+
+
+00:13:50 - 00:14:16
+ Se   tiver algum erro, por exemplo, aqui eu   não tô conseguindo escrever direto, eu   digito uma letra e ele simplesmente   para, parece que ele recarrega a página.   Eu vou chegar pra inteligência   artificial, eu vou ter esse painel aqui   na lateral esquerda. Quando eu tento   digitar diretamente,   não consigo.
+
+
+00:14:08 - 00:14:45
+ Parece ter algum erro na   hora de colocar os dados no sistema.   Simplesmente eu vou dizer isso aqui para   ele. Ele vai analisar. Quando eu criei   esse botão de WhatsApp, ele me   apresentou diversos erros, tá gente? Até   eu conseguir esse formato aqui, né?   [roncando] Aonde ele simplesmente pega o   link do do WhatsApp padrão e ele já abre   a página do meu navegador contendo esse   link, né? Então, e eu levei, eu apanhei   um pouquinho até conseguir fazer esse   ajuste de WhatsApp, de salvar, de   exportar pro Excel.
+
+
+00:14:41 - 00:15:05
+ E aí, se você   quiser, o que que eu vou fazer? Eu posso   até disponibilizar o código, né? Diga   aqui nos comentários se você quiser o   código do sistema que eu fiz. De toda   forma, eh o nosso sistema funcionando   também tá aqui no link da descrição   aqui. Olha, isso acontece porque a   função par float usada no código tenta   converter um número enquanto você   digita.
+
+
+00:15:02 - 00:15:33
+ Se você digita um, tenta   escrever para 1.5. Sistema converte. Fiz   a correção para permitir que você digite   livremente. Então vamos ver se ele   realmente corrigiu aqui. Vamos abrir   novamente o sistema.   Ao final ele salva, né? Olha, diz ele   que removeu.   Ainda não tá corrigido, né? Deixa eu ver   aqui.   Ainda não está corrigido.
+
+
+00:15:26 - 00:15:59
+ Não consigo   digitar diretamente o nome do projeto em   texto.   E aí ele vai fazendo esses ajustes.   Vamos aguardar ele raciocinar. A gente   já volta assim que ele terminar aqui,   pessoal. Vocês podem até ver aqui pelo   relógio, né? Dessa vez ele demorou um   pouquinho mais. Ele fala: "O problema é   que eu havia definido as telas   calculador histórico como componentes   internos no React, que é a nossa   aplicação.
+
+
+00:15:55 - 00:16:15
+ Isso faz com que a tela   inteira seja recriada a cada letra. Por   isso que quando eu digitava, ele   recriava a tela novamente e, né, eu não   conseguia continuar a digitação. Ele   mesmo identificou o problema, né? É como   que se fosse aqui um assistente, eu   praticamente só tô dando as ordens para   ele, falando que tá errado, que eu quero   de ajuste. E aí ele tá reprogramando.
+
+
+00:16:10 - 00:17:12
+ Eu   consigo ver aqui em tempo real ele   recodificando tudo. Quando tiver pronto   novamente, ele vai habilitar o botão de   preview, né? Então eu consigo   simplesmente pedir para ele aquilo que   eu quero, né? peço a forma que eu quero.   Eu considero que para uma calculadora de   impress impressão 3D, aqueles   componentes ali são essenciais para que   a gente consiga ter um sistema completo   e funcional, né? Novamente você pode   ajustar aí da forma como você bem   entender no seu programa, colocando   coisas que só você precise. Você pode   até colocar ali uma uma questão de ordem   de pedidos, né? Pedido para fulano de   tal, endereço, eh, CEP, eh, método de   envio pelos Correios. E aí no final você   vai gerando aquele relatório. Uma coisa   que é importante, gente, que eu não   mencionei anteriormente, que esse   programa aqui tem de certa forma algo   que é um pouco negativo. Deixa eu só ver   aqui. Olha, Papai Noel, agora eu que   consigo digitar aqui livremente. Consigo
+
+
+00:17:08 - 00:17:31
+  colocar as horas de impressão, 18 horas,   consigo colocar o peso do filamento, ele   já vai atualizando aqui o custo que eu   vou tendo de material, de energia, o   risco, né? Ele vai me dando todas os   custos aqui, inclusive com configurações   pré-programadas. Posso clicar em salvar,   já vai ter aqui no histórico.
+
+
+00:17:27 - 00:18:27
+ E aí é   nessa parte do histórico que eu quero   fazer um alerta para vocês, que   infelizmente, né, a gente ainda não tem   uma conexão desse programa com um banco   de dados específico. Ele é um programa   que funciona todo ali ao vivo e ele não   é salvo. Ou seja, se eu pegar e abrir   novamente essa aplicação, deixa eu   colocar aqui ele, essas informações que   eu coloquei anteriormente vão sumir, né?   Se eu abrir aqui a aplicação, colocar em   histórico, ela não vai estar disponível   novamente. Eu venho aqui em histórico,   ele zera, né? Cada vez que eu abro a   tela eh de navegação desse programa, a   tela vai, os dados vão sumir justamente   pelo fato de eu não estar armazenando   isso num banco de dados de forma   específica. E aí tem o pulo do gato, que   foi essas planilhas que eu criei, né,   essa parte, essa possibilidade da gente   exportar os dados. fiz todo o relatório,   eh, cataloguei ali todos os meus   personagens, tudo aquilo que eu vou
+
+
+00:18:24 - 00:19:24
+  imprimir, eu posso simplesmente exportar   como tabela, né? E aí eu vou ter aquilo   dali de forma de forma prática. Uma   forma, não sei se você faz a assinatura,   né? Eu tenho aqui a assinatura do plano   pro, né, do do Gemini, é algo em torno   de R$ 99 por mês. Eh, eu acho que vale   muito a pena a quantidade de coisas que   ele entrega pra gente, né, pelo preço e   pela possibilidade da gente desenvolver   os mais variados programas, né? Então,   eu acho que vale muito a pena, ainda que   a gente tenha ainda essa dificuldade,   essa falta de conexão com o banco de   dados específico, né? Claro que se você   tiver um conhecimento mais aprofundado   de programação, você pode para ele pedir   para ele definir toda essa linguagem,   toda essa sistêmica, por exemplo, para   um sistema PHP que faça conexão com o   banco de dados da tua hospedagem, né,   que vai ter um grau a mais de   complexidade, porque envolve até mesmo a   contratação de um servidor de   hospedagem, tanto pro seu site que vai   ficar o teu sistema como hospedagem,
+
+
+00:19:23 - 00:19:49
+  como hospedagem do próprio banco de   dados do SKL, mas você vai ter algo fixo   também, né? você poderia pedir para ele   ajustar e desenvolver um sistema com   essas características e funcionalidades.   Então, pessoal, espero que vocês tenham   gostado dessa calculadora. Quero abrir   aqui a sessão de comentários para você   dizer se teve alguma dúvida, se tem   alguma dúvida, né? Quando vocês   compartilham e dão ideias pra gente, é   muito legal.
+
+
+00:19:44 - 00:20:07
+ Muita gente pediu esse   tutorial de como criar essa esse sistema   com a inteligência artificial. E eu já   aproveito o engajamento aqui para poder   pedir para você se inscrever no canal,   para você não perder as nossas   atualizações. Confere também os Rios, o   nosso Instagram. É muito bom ter essa   comunidade aqui de Impressão 3D   fortemente ativa.
+
+
+00:20:03 - 00:20:10
+ Meu nome é Felipe, eu   vou ficando por aqui e até a próxima.   Ciao. Ciao.
+

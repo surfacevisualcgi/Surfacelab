@@ -1,0 +1,44 @@
+# Variáveis de ambiente / segredos
+.env
+.env.*
+!.env.example
+
+# Dependências
+node_modules/
+
+# Build
+dist/
+build/
+.vite/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+
+# Claude Code (configuração pessoal — o settings.json do projeto pode ser commitado)
+.claude/settings.local.json
+
+# Supabase (local)
+.branches/
+.temp/
+supabase/.temp/
+
+# Fonte comercial (Lineto) — licença desktop não cobre repo/web. NÃO commitar.
+assets/fonts/replica-pro/
+
+# Protótipos de referência (135MB de imagens — ficam no disco, fora do git)
+prototipo v2/
+prototipo-telas/
+
+# Testes
+coverage/
