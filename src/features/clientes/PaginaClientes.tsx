@@ -189,14 +189,23 @@ export function PaginaClientes() {
       <Modal aberto={!!editando} titulo={editando?.id ? (editando.nome ?? '') : t('cliente.novo')} onFechar={() => setEditando(null)} largura="max-w-xl">
         {editando && (
           <form onSubmit={salvar} className="grid grid-cols-2 gap-3">
-            <Campo rotulo={t('cliente.nome')} className="col-span-2 sm:col-span-1">
+            {/* toggle PF | PJ no topo (modal 05 do v2) */}
+            <div className="col-span-2 flex gap-1.5" role="tablist">
+              {([['pf', 'Pessoa física'], ['pj', 'Pessoa jurídica']] as const).map(([tipo, rotulo]) => (
+                <button key={tipo} type="button" role="tab"
+                  aria-selected={(editando.tipo ?? 'pf') === tipo}
+                  onClick={() => setEditando({ ...editando, tipo })}
+                  className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold ${
+                    (editando.tipo ?? 'pf') === tipo
+                      ? 'bg-ink text-white' : 'bg-surface-2 text-texto-2 hover:text-ink'
+                  }`}>
+                  {rotulo}
+                </button>
+              ))}
+              <input type="hidden" name="tipo" value={editando.tipo ?? 'pf'} />
+            </div>
+            <Campo rotulo={(editando.tipo ?? 'pf') === 'pj' ? 'Razão social' : t('cliente.nome')} className="col-span-2">
               <Entrada name="nome" required defaultValue={editando.nome ?? ''} />
-            </Campo>
-            <Campo rotulo={t('cliente.tipo')}>
-              <Selecao name="tipo" defaultValue={editando.tipo ?? 'pf'}>
-                <option value="pf">Pessoa física</option>
-                <option value="pj">Pessoa jurídica</option>
-              </Selecao>
             </Campo>
             {podePii && (
               <>

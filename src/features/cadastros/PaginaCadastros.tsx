@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
-import { deCentavos, paraCentavos } from '@/lib/formato';
+import { deCentavos, moeda, paraCentavos } from '@/lib/formato';
 import {
   Botao, CabecalhoPagina, Campo, Carregando, Cartao, Dinheiro, Entrada,
   EstadoErro, EstadoVazio, Etiqueta, Modal, Selecao, Tabela,
@@ -159,11 +159,25 @@ interface Material {
 
 export function AbaMateriais() {
   const { t } = useTranslation();
-  const { pode } = useAuth();
+  const { pode, formato } = useAuth();
   const lista = useLista<Material>('material', { ordem: 'nome', desc: false });
   const crud = useCrud('material');
   const [editando, setEditando] = useState<Partial<Material> | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  // estado "vivo" para o card de custo unitário calculado (modal v2)
+  const [vivo, setVivo] = useState({ preco: '', frete: '', fator: 1000 });
+
+  function abrir(m: Partial<Material>) {
+    setEditando(m);
+    setVivo({
+      preco: deCentavos(m.preco_compra ?? 0),
+      frete: deCentavos(m.frete ?? 0),
+      fator: m.fator_conversao ?? 1000,
+    });
+  }
+  const custoVivo = vivo.fator > 0
+    ? Math.round(((paraCentavos(vivo.preco) + paraCentavos(vivo.frete)) / vivo.fator) * 100) / 100
+    : 0;
 
   async function salvar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -198,11 +212,11 @@ export function AbaMateriais() {
     <div>
       <div className="mb-3 flex justify-end">
         {pode('estoque', 'criar') && (
-          <Botao onClick={() => setEditando({})}>+ {t('acoes.novo')}</Botao>
+          <Botao onClick={() => abrir({})}>+ {t('acoes.novo')}</Botao>
         )}
       </div>
       {lista.data!.length === 0 ? (
-        <EstadoVazio acao={pode('estoque', 'criar') ? <Botao onClick={() => setEditando({})}>+ {t('acoes.novo')}</Botao> : undefined} />
+        <EstadoVazio acao={pode('estoque', 'criar') ? <Botao onClick={() => abrir({})}>+ {t('acoes.novo')}</Botao> : undefined} />
       ) : (
         <Tabela cabecalhos={[
           t('cadastros.material.nome'), t('cadastros.material.tipo'),
@@ -230,7 +244,7 @@ export function AbaMateriais() {
               </td>
               <td className="px-3 py-2.5 text-right">
                 {pode('estoque', 'editar') && (
-                  <Botao variante="fantasma" onClick={() => setEditando(m)}>{t('acoes.editar')}</Botao>
+                  <Botao variante="fantasma" onClick={() => abrir(m)}>{t('acoes.editar')}</Botao>
                 )}
               </td>
             </tr>
@@ -241,21 +255,29 @@ export function AbaMateriais() {
       <Modal aberto={!!editando} titulo={editando?.id ? t('acoes.editar') : t('acoes.novo')} onFechar={() => setEditando(null)}>
         {editando && (
           <form onSubmit={salvar} className="grid grid-cols-2 gap-3">
+            {/* abas por tipo no topo do modal (modal 03 do v2) */}
+            <div className="col-span-2 flex flex-wrap gap-1.5" role="tablist">
+              {(['filamento', 'resina', 'componente', 'consumivel', 'embalagem'] as const).map((tp) => (
+                <button key={tp} type="button" role="tab"
+                  aria-selected={(editando.tipo ?? 'filamento') === tp}
+                  onClick={() => setEditando({ ...editando, tipo: tp })}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                    (editando.tipo ?? 'filamento') === tp
+                      ? 'bg-ink text-white' : 'bg-surface-2 text-texto-2 hover:text-ink'
+                  }`}>
+                  {t(`cadastros.material.tipoLabel.${tp}`)}
+                </button>
+              ))}
+              <input type="hidden" name="tipo" value={editando.tipo ?? 'filamento'} />
+            </div>
             <Campo rotulo={t('cadastros.material.nome')} className="col-span-2">
               <Entrada name="nome" required defaultValue={editando.nome ?? ''} />
             </Campo>
-            <Campo rotulo={t('cadastros.material.tipo')}>
-              <Selecao name="tipo" defaultValue={editando.tipo ?? 'filamento'}>
-                {['filamento', 'resina', 'componente', 'consumivel', 'embalagem'].map((tp) => (
-                  <option key={tp} value={tp}>{t(`cadastros.material.tipoLabel.${tp}`)}</option>
-                ))}
-              </Selecao>
+            <Campo rotulo="Marca">
+              <Entrada name="marca" defaultValue={editando.marca ?? ''} />
             </Campo>
-            <Campo rotulo="Marca / cor">
-              <div className="flex gap-2">
-                <Entrada name="marca" placeholder="Marca" defaultValue={editando.marca ?? ''} />
-                <Entrada name="cor" placeholder="Cor" defaultValue={editando.cor ?? ''} />
-              </div>
+            <Campo rotulo="Cor">
+              <Entrada name="cor" defaultValue={editando.cor ?? ''} />
             </Campo>
             <Campo rotulo={t('cadastros.material.unidadeCompra')}>
               <Entrada name="unidade_compra" required defaultValue={editando.unidade_compra ?? 'kg'} />
@@ -264,17 +286,34 @@ export function AbaMateriais() {
               <Entrada name="unidade_consumo" required defaultValue={editando.unidade_consumo ?? 'g'} />
             </Campo>
             <Campo rotulo={t('cadastros.material.fatorConversao')} dica="Ex.: 1 kg = 1000 g → 1000">
-              <Entrada name="fator_conversao" type="number" step="any" min="0.0001" required defaultValue={editando.fator_conversao ?? 1000} />
+              <Entrada name="fator_conversao" type="number" step="any" min="0.0001" required
+                defaultValue={editando.fator_conversao ?? 1000}
+                onChange={(e) => setVivo({ ...vivo, fator: Number(e.target.value) || 0 })} />
             </Campo>
             <Campo rotulo={t('estoque.minimo')}>
               <Entrada name="minimo" type="number" step="any" min="0" defaultValue={editando.minimo ?? 0} />
             </Campo>
             <Campo rotulo={t('cadastros.material.precoCompra')}>
-              <Entrada name="preco_compra" inputMode="decimal" defaultValue={deCentavos(editando.preco_compra ?? 0)} />
+              <Entrada name="preco_compra" inputMode="decimal" defaultValue={deCentavos(editando.preco_compra ?? 0)}
+                onChange={(e) => setVivo({ ...vivo, preco: e.target.value })} />
             </Campo>
             <Campo rotulo={t('cadastros.material.frete')}>
-              <Entrada name="frete" inputMode="decimal" defaultValue={deCentavos(editando.frete ?? 0)} />
+              <Entrada name="frete" inputMode="decimal" defaultValue={deCentavos(editando.frete ?? 0)}
+                onChange={(e) => setVivo({ ...vivo, frete: e.target.value })} />
             </Campo>
+            {/* custo unitário calculado AO VIVO (v2 — acento da marca, não teal) */}
+            <div className="col-span-2 rounded-xl border border-brand-roxo/30 bg-brand-roxo/5 p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-brand-roxo">
+                {t('cadastros.material.custoUnitario')}
+              </p>
+              <p className="text-lg font-extrabold tabular-nums grad-texto">
+                {moeda(custoVivo, formato)}
+                <span className="ml-1 text-xs font-semibold text-texto-2">
+                  / {editando.unidade_consumo ?? 'unid. de consumo'}
+                </span>
+              </p>
+              <p className="text-[11px] text-texto-2">(preço + frete) ÷ fator de conversão</p>
+            </div>
             {erro && <p className="col-span-2 text-xs font-semibold text-erro">{erro}</p>}
             <div className="col-span-2 flex justify-end gap-2">
               <Botao type="button" variante="secundario" onClick={() => setEditando(null)}>{t('acoes.cancelar')}</Botao>
@@ -301,11 +340,24 @@ function custoHoraImpressora(i: Impressora): number {
 
 export function AbaImpressoras() {
   const { t } = useTranslation();
-  const { pode } = useAuth();
+  const { pode, formato } = useAuth();
   const lista = useLista<Impressora>('impressora', { ordem: 'nome', desc: false });
   const crud = useCrud('impressora');
   const [editando, setEditando] = useState<Partial<Impressora> | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  // estado vivo para o card "custo por hora calculado" (modal 04 do v2)
+  const [vivoImp, setVivoImp] = useState({ valor: '', vida: 5000, manutencao: '' });
+
+  function abrirImp(i: Partial<Impressora>) {
+    setEditando(i);
+    setVivoImp({
+      valor: deCentavos(i.valor_aquisicao ?? 0),
+      vida: i.vida_util_horas ?? 5000,
+      manutencao: deCentavos(i.manutencao_hora ?? 0),
+    });
+  }
+  const custoHoraVivo =
+    (vivoImp.vida > 0 ? paraCentavos(vivoImp.valor) / vivoImp.vida : 0) + paraCentavos(vivoImp.manutencao);
 
   async function salvar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -336,7 +388,7 @@ export function AbaImpressoras() {
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        {pode('configuracoes', 'criar') && <Botao onClick={() => setEditando({})}>+ {t('acoes.nova')}</Botao>}
+        {pode('configuracoes', 'criar') && <Botao onClick={() => abrirImp({})}>+ {t('acoes.nova')}</Botao>}
       </div>
       {lista.data!.length === 0 ? (
         <EstadoVazio />
@@ -352,10 +404,10 @@ export function AbaImpressoras() {
               </td>
               <td className="px-3 py-2.5"><Etiqueta cor="roxo">{i.tecnologia.toUpperCase()}</Etiqueta></td>
               <td className="px-3 py-2.5 tabular-nums">{i.consumo_w} W</td>
-              <td className="px-3 py-2.5 tabular-nums"><Dinheiro centavos={custoHoraImpressora(i)} />/h</td>
+              <td className="px-3 py-2.5 font-semibold tabular-nums grad-texto"><Dinheiro centavos={custoHoraImpressora(i)} />/h</td>
               <td className="px-3 py-2.5 text-right">
                 {pode('configuracoes', 'editar') && (
-                  <Botao variante="fantasma" onClick={() => setEditando(i)}>{t('acoes.editar')}</Botao>
+                  <Botao variante="fantasma" onClick={() => abrirImp(i)}>{t('acoes.editar')}</Botao>
                 )}
               </td>
             </tr>
@@ -379,17 +431,32 @@ export function AbaImpressoras() {
               <Entrada name="fabricante" defaultValue={editando.fabricante ?? ''} />
             </Campo>
             <Campo rotulo={t('cadastros.impressora.valorAquisicao')}>
-              <Entrada name="valor_aquisicao" inputMode="decimal" defaultValue={deCentavos(editando.valor_aquisicao ?? 0)} />
+              <Entrada name="valor_aquisicao" inputMode="decimal" defaultValue={deCentavos(editando.valor_aquisicao ?? 0)}
+                onChange={(e) => setVivoImp({ ...vivoImp, valor: e.target.value })} />
             </Campo>
             <Campo rotulo={t('cadastros.impressora.vidaUtil')}>
-              <Entrada name="vida_util_horas" type="number" min="1" required defaultValue={editando.vida_util_horas ?? 5000} />
+              <Entrada name="vida_util_horas" type="number" min="1" required defaultValue={editando.vida_util_horas ?? 5000}
+                onChange={(e) => setVivoImp({ ...vivoImp, vida: Number(e.target.value) || 0 })} />
             </Campo>
             <Campo rotulo={t('cadastros.impressora.consumo')}>
               <Entrada name="consumo_w" type="number" min="0" defaultValue={editando.consumo_w ?? 150} />
             </Campo>
             <Campo rotulo={t('cadastros.impressora.manutencaoHora')}>
-              <Entrada name="manutencao_hora" inputMode="decimal" defaultValue={deCentavos(editando.manutencao_hora ?? 0)} />
+              <Entrada name="manutencao_hora" inputMode="decimal" defaultValue={deCentavos(editando.manutencao_hora ?? 0)}
+                onChange={(e) => setVivoImp({ ...vivoImp, manutencao: e.target.value })} />
             </Campo>
+            {/* o número que importa: custo por hora, calculado ao vivo (v2) */}
+            <div className="col-span-2 rounded-xl border border-brand-roxo/30 bg-brand-roxo/5 p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-brand-roxo">
+                {t('cadastros.impressora.custoHora')}
+              </p>
+              <p className="text-lg font-extrabold tabular-nums grad-texto">
+                {moeda(Math.round(custoHoraVivo), formato)}/h
+              </p>
+              <p className="text-[11px] text-texto-2">
+                amortização (valor ÷ vida útil) + manutenção/h — alimenta a Calculadora
+              </p>
+            </div>
             {erro && <p className="col-span-2 text-xs font-semibold text-erro">{erro}</p>}
             <div className="col-span-2 flex justify-end gap-2">
               <Botao type="button" variante="secundario" onClick={() => setEditando(null)}>{t('acoes.cancelar')}</Botao>
