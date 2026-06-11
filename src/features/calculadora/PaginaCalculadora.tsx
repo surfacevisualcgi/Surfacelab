@@ -17,9 +17,10 @@ import {
 import { calcular, entradasVazias, VERSAO_MOTOR, type EntradasCalculo } from '@/core/calculo';
 import { percentual } from '@/lib/formato';
 import {
-  Botao, CabecalhoPagina, Campo, Cartao, Dinheiro, Entrada, EstadoVazio,
-  Etiqueta, Selecao,
+  Acordeao, Botao, CabecalhoPagina, Campo, Cartao, Dinheiro, Entrada,
+  EstadoVazio, Etiqueta, Selecao,
 } from '@/components/ui';
+import { GraficoBarrasH } from '@/components/graficos';
 import { useAuth } from '@/auth/AuthProvider';
 import type { Modelo3D } from '../modelos/PaginaModelos';
 
@@ -223,13 +224,16 @@ export function PaginaCalculadora() {
   }
 
   return (
-    <div>
+    <div className="pb-28 lg:pb-0">
       <CabecalhoPagina titulo={t('calculadora.titulo')} subtitulo={t('calculadora.subtitulo')} />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
         {/* coluna de configuração */}
         <div className="space-y-4">
           <Cartao>
+            <h2 className="mb-3 text-sm font-bold text-ink">
+              <span className="grad-texto">1.</span> {t('calculadora.secaoConfig')}
+            </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Campo rotulo={t('calculadora.projeto')} className="col-span-2 sm:col-span-3">
                 <Entrada value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Luminária Lua 20cm" />
@@ -309,70 +313,121 @@ export function PaginaCalculadora() {
             )}
           </Cartao>
 
-          {/* detalhamento com explicações */}
+          {/* 2. itens de custo — tabela com linha de total destacada (v2) */}
           <Cartao>
-            <h2 className="mb-2 text-sm font-bold text-ink">{t('calculadora.itensCusto')}</h2>
+            <h2 className="mb-2 text-sm font-bold text-ink">
+              <span className="grad-texto">2.</span> {t('calculadora.itensCusto')}
+            </h2>
             {!temItens ? (
               <EstadoVazio mensagem={t('calculadora.semItens')} />
             ) : (
-              <div className="divide-y divide-borda/70">
-                {resultado.itens.map((item, idx) => (
-                  <div key={`${item.chave}-${idx}`}>
-                    <button
-                      className="flex w-full items-center justify-between py-2.5 text-left"
-                      onClick={() => setAberto(aberto === `${item.chave}-${idx}` ? null : `${item.chave}-${idx}`)}
-                    >
-                      <span className="text-sm font-semibold text-ink">{item.descricao}</span>
-                      <span className="flex items-center gap-2">
-                        <Dinheiro centavos={item.total} className="text-sm font-bold" />
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                          className={`text-texto-2 transition-transform ${aberto === `${item.chave}-${idx}` ? 'rotate-180' : ''}`}>
-                          <path d="m6 9 6 6 6-6" />
-                        </svg>
-                      </span>
-                    </button>
-                    {aberto === `${item.chave}-${idx}` && (
-                      <div className="mb-2.5 rounded-lg bg-surface-2 p-3 text-xs text-texto-2">
-                        <p className="mb-1 font-semibold text-ink">{t('calculadora.explicacao')}:</p>
-                        <p>{item.explicacao}</p>
-                        {item.detalhes?.map((d, i) => (
-                          <p key={i} className="mt-1.5 border-l-2 border-brand-roxo/40 pl-2">
-                            <span className="font-semibold">{d.descricao}:</span> {d.explicacao}
-                          </p>
-                        ))}
-                      </div>
-                    )}
+              <div>
+                <div className="divide-y divide-borda/70">
+                  {resultado.itens.map((item, idx) => (
+                    <div key={`${item.chave}-${idx}`}>
+                      <button
+                        className="flex min-h-11 w-full items-center justify-between py-2 text-left"
+                        onClick={() => setAberto(aberto === `${item.chave}-${idx}` ? null : `${item.chave}-${idx}`)}
+                      >
+                        <span className="text-sm font-semibold text-ink">{item.descricao}</span>
+                        <span className="flex items-center gap-2">
+                          <Dinheiro centavos={item.total} className="text-sm font-bold" />
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                            className={`text-texto-2 transition-transform ${aberto === `${item.chave}-${idx}` ? 'rotate-180' : ''}`}>
+                            <path d="m6 9 6 6 6-6" />
+                          </svg>
+                        </span>
+                      </button>
+                      {aberto === `${item.chave}-${idx}` && (
+                        <div className="mb-2.5 rounded-lg bg-surface-2 p-3 text-xs text-texto-2">
+                          <p className="mb-1 font-semibold text-ink">{t('calculadora.explicacao')}:</p>
+                          <p>{item.explicacao}</p>
+                          {item.detalhes?.map((d, i) => (
+                            <p key={i} className="mt-1.5 border-l-2 border-brand-roxo/40 pl-2">
+                              <span className="font-semibold">{d.descricao}:</span> {d.explicacao}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {flag('ver_custos') && (
+                  <div className="mt-1 flex items-center justify-between rounded-lg bg-ink px-3 py-2.5">
+                    <span className="text-xs font-bold uppercase tracking-wide text-white/75">
+                      {t('calculadora.custoTotal')}
+                    </span>
+                    <Dinheiro centavos={resultado.custoTotal} className="text-base font-extrabold text-white" />
                   </div>
-                ))}
+                )}
               </div>
             )}
           </Cartao>
+
+          {/* 4. fórmulas e explicações — acordeão recolhido (transparência sem poluir) */}
+          {temItens && flag('ver_custos') && (
+            <Acordeao titulo={<span><span className="grad-texto">4.</span> {t('calculadora.formulas')}</span>}>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="mb-2 text-xs font-bold uppercase text-texto-2">{t('calculadora.deOndeVemCusto')}</h3>
+                  <GraficoBarrasH itens={resultado.itens.map((i) => ({ rotulo: i.descricao, valor: i.total }))} />
+                </div>
+                <div className="space-y-1.5 rounded-lg bg-surface-2 p-3 text-xs text-texto-2">
+                  <p>{t('calculadora.formulaPreco')}</p>
+                  <p className="font-mono text-[11px]">
+                    preço = custo ÷ (1 − margem) ÷ (1 − taxas − % custo fixo)
+                  </p>
+                  <p className="pt-1">
+                    <Dinheiro centavos={resultado.custoTotal} /> ÷ (1 − {percentual(entradas.margemDesejada, formato)})
+                    {' '}÷ divisor de taxas = <Dinheiro centavos={resultado.precoFinal} className="font-bold text-ink" />
+                  </p>
+                </div>
+              </div>
+            </Acordeao>
+          )}
         </div>
 
-        {/* coluna de resultados */}
-        <div className="space-y-3">
-          <Cartao className="border-2 border-ink">
-            <p className="text-[11px] font-bold uppercase text-texto-2">{t('calculadora.precoSugerido')}</p>
-            <p className="text-2xl font-extrabold grad-texto">
-              <Dinheiro centavos={temItens ? resultado.precoFinal : 0} />
-            </p>
-            <p className="text-xs text-texto-2">
-              {t('calculadora.precoUnitario')}: <Dinheiro centavos={temItens ? resultado.precoUnitario : 0} className="font-bold text-ink" />
-            </p>
-          </Cartao>
+        {/* 3. resultados — painel fixo com 4 números-herói (v2) */}
+        <div className="space-y-3 lg:sticky lg:top-16 lg:h-fit">
+          <h2 className="text-sm font-bold text-ink lg:px-1">
+            <span className="grad-texto">3.</span> {t('calculadora.resultados')}
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="col-span-2 rounded-xl border-2 border-ink bg-white p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-texto-2">{t('calculadora.precoSugerido')}</p>
+              <p className="text-2xl font-extrabold grad-texto tabular-nums">
+                <Dinheiro centavos={temItens ? resultado.precoFinal : 0} />
+              </p>
+              <p className="text-[11px] text-texto-2">
+                {t('calculadora.precoUnitario')}: <Dinheiro centavos={temItens ? resultado.precoUnitario : 0} className="font-bold text-ink" />
+              </p>
+            </div>
+            {flag('ver_custos') && (
+              <>
+                <div className="rounded-xl border border-borda bg-white p-3">
+                  <p className="text-[10px] font-bold uppercase text-texto-2">{t('calculadora.custoUnitario')}</p>
+                  <p className="text-lg font-extrabold tabular-nums text-ink">
+                    <Dinheiro centavos={temItens ? resultado.custoUnitario : 0} />
+                  </p>
+                </div>
+                <div className="rounded-xl border border-borda bg-white p-3">
+                  <p className="text-[10px] font-bold uppercase text-texto-2">{t('calculadora.lucro')}</p>
+                  <p className={`text-lg font-extrabold tabular-nums ${resultado.lucro >= 0 ? 'text-ok' : 'text-erro'}`}>
+                    <Dinheiro centavos={temItens ? resultado.lucro : 0} />
+                  </p>
+                  <p className="text-[11px] font-semibold text-texto-2">
+                    {t('calculadora.margemReal')}: {temItens ? percentual(resultado.margem, formato) : '—'}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
 
           {flag('ver_custos') && (
             <Cartao>
               <dl className="space-y-1.5 text-sm">
                 <Linha rotulo={t('calculadora.custoTotal')}><Dinheiro centavos={resultado.custoTotal} /></Linha>
-                <Linha rotulo={t('calculadora.custoUnitario')}><Dinheiro centavos={resultado.custoUnitario} /></Linha>
                 <Linha rotulo={t('calculadora.taxasPagas')}><Dinheiro centavos={resultado.valorTaxas + resultado.rateioCustoFixoValor} /></Linha>
-                <Linha rotulo={t('calculadora.lucro')}>
-                  <span className={resultado.lucro >= 0 ? 'text-ok font-bold' : 'text-erro font-bold'}>
-                    <Dinheiro centavos={resultado.lucro} />
-                  </span>
-                </Linha>
-                <Linha rotulo={t('calculadora.margemReal')}>{percentual(resultado.margem, formato)}</Linha>
                 <Linha rotulo={t('calculadora.markup')}>{resultado.markup.toFixed(2)}×</Linha>
                 <Linha rotulo={t('calculadora.precoMinimo')}>
                   <Dinheiro centavos={resultado.precoMinimoUnitario} className="text-alerta font-semibold" />
@@ -390,6 +445,7 @@ export function PaginaCalculadora() {
           {erro && <p className="text-xs font-semibold text-erro">{erro}</p>}
           {msg && <p className="text-xs font-semibold text-ok">{msg}</p>}
 
+          {/* ações primárias fixas no rodapé do painel (v2) */}
           <div className="flex flex-col gap-2">
             <Botao variante="secundario" disabled={!temItens || salvando} onClick={salvarSimulacao}>
               {t('calculadora.salvarSimulacao')}
@@ -405,6 +461,34 @@ export function PaginaCalculadora() {
           </div>
         </div>
       </div>
+
+      {/* mobile: faixa fixa com os 4 resultados acima da bottom nav (v2) */}
+      {temItens && (
+        <div className="fixed inset-x-0 bottom-16 z-20 border-t border-borda bg-white/95 px-3 py-2 backdrop-blur lg:hidden">
+          <div className="mx-auto grid max-w-md grid-cols-4 gap-2 text-center">
+            <ResultadoMini rotulo={t('calculadora.preco')} destaque>
+              <Dinheiro centavos={resultado.precoFinal} />
+            </ResultadoMini>
+            <ResultadoMini rotulo={t('calculadora.unitario')}>
+              <Dinheiro centavos={resultado.precoUnitario} />
+            </ResultadoMini>
+            {flag('ver_custos') ? (
+              <>
+                <ResultadoMini rotulo={t('calculadora.custoCurto')}>
+                  <Dinheiro centavos={resultado.custoUnitario} />
+                </ResultadoMini>
+                <ResultadoMini rotulo={t('calculadora.margemReal')}>
+                  {percentual(resultado.margem, formato)}
+                </ResultadoMini>
+              </>
+            ) : (
+              <ResultadoMini rotulo={t('calculadora.precoMinimo')}>
+                <Dinheiro centavos={resultado.precoMinimoUnitario} />
+              </ResultadoMini>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -414,6 +498,19 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
     <div className="flex items-center justify-between">
       <dt className="text-texto-2">{rotulo}</dt>
       <dd className="font-semibold tabular-nums text-ink">{children}</dd>
+    </div>
+  );
+}
+
+function ResultadoMini({ rotulo, children, destaque = false }: {
+  rotulo: string; children: React.ReactNode; destaque?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-[9px] font-bold uppercase text-texto-2">{rotulo}</p>
+      <p className={`truncate text-xs font-extrabold tabular-nums ${destaque ? 'grad-texto' : 'text-ink'}`}>
+        {children}
+      </p>
     </div>
   );
 }
