@@ -5,12 +5,22 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
-import { dataCurta, deCentavos, paraCentavos } from '@/lib/formato';
+import { dataCurta, deCentavos, moeda, paraCentavos } from '@/lib/formato';
 import {
   Botao, CabecalhoPagina, Campo, Carregando, Cartao, Dinheiro, Entrada,
-  EstadoErro, EstadoVazio, Etiqueta, Modal, Selecao, Tabela,
+  EstadoErro, EstadoVazio, Etiqueta, Kpi, Modal, Selecao, TabelaDados,
 } from '@/components/ui';
+import { GraficoBarrasDuplas } from '@/components/graficos';
 import { useAuth } from '@/auth/AuthProvider';
+
+function ultimos6Meses(): { chave: string; rotulo: string }[] {
+  const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const agora = new Date();
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(agora.getFullYear(), agora.getMonth() - (5 - i), 1);
+    return { chave: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, rotulo: nomes[d.getMonth()] };
+  });
+}
 
 interface Lancamento {
   id: string; tipo: 'entrada' | 'saida'; descricao: string; categoria: string;
@@ -26,14 +36,29 @@ export function PaginaFinanceiro() {
   const [erro, setErro] = useState<string | null>(null);
 
   const kpis = useMemo(() => {
-    const pendentes = (lista.data ?? []).filter((l) => l.status === 'pendente');
+    const validos = (lista.data ?? []).filter((l) => l.status !== 'cancelado');
+    const pendentes = validos.filter((l) => l.status === 'pendente');
     const hoje = new Date().toISOString().slice(0, 10);
+    const mesAtual = hoje.slice(0, 7);
+    const doMes = validos.filter((l) => l.vencimento.slice(0, 7) === mesAtual);
     return {
       aReceber: pendentes.filter((l) => l.tipo === 'entrada').reduce((s, l) => s + Number(l.valor), 0),
       aPagar: pendentes.filter((l) => l.tipo === 'saida').reduce((s, l) => s + Number(l.valor), 0),
       atrasados: pendentes.filter((l) => l.vencimento < hoje).length,
+      resultadoMes:
+        doMes.filter((l) => l.tipo === 'entrada').reduce((s, l) => s + Number(l.valor), 0) -
+        doMes.filter((l) => l.tipo === 'saida').reduce((s, l) => s + Number(l.valor), 0),
+      fluxo6: ultimos6Meses().map((m) => ({
+        rotulo: m.rotulo,
+        entrada: validos.filter((l) => l.tipo === 'entrada' && l.vencimento.slice(0, 7) === m.chave)
+          .reduce((s, l) => s + Number(l.valor), 0),
+        saida: validos.filter((l) => l.tipo === 'saida' && l.vencimento.slice(0, 7) === m.chave)
+          .reduce((s, l) => s + Number(l.valor), 0),
+      })),
     };
   }, [lista.data]);
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
 
   async function salvar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -73,50 +98,81 @@ export function PaginaFinanceiro() {
         acoes={pode('financeiro', 'criar') ? <Botao onClick={() => setNovo(true)}>+ {t('financeiro.novoLancamento')}</Botao> : undefined}
       />
 
-      <div className="mb-4 grid grid-cols-3 gap-3">
-        <Cartao>
-          <p className="text-[11px] font-bold uppercase text-texto-2">{t('financeiro.aReceber')}</p>
-          <p className="mt-1 text-lg font-extrabold text-ok"><Dinheiro centavos={kpis.aReceber} /></p>
-        </Cartao>
-        <Cartao>
-          <p className="text-[11px] font-bold uppercase text-texto-2">{t('financeiro.aPagar')}</p>
-          <p className="mt-1 text-lg font-extrabold text-erro"><Dinheiro centavos={kpis.aPagar} /></p>
-        </Cartao>
-        <Cartao>
-          <p className="text-[11px] font-bold uppercase text-texto-2">{t('financeiro.atrasados')}</p>
-          <p className="mt-1 text-lg font-extrabold text-ink">{kpis.atrasados}</p>
-        </Cartao>
+      {/* 4 KPIs + fluxo de caixa herói (v2) */}
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi rotulo={t('financeiro.aReceber')}>
+          <span className="text-ok">{moeda(kpis.aReceber, formato)}</span>
+        </Kpi>
+        <Kpi rotulo={t('financeiro.aPagar')}>
+          <span className="text-erro">{moeda(kpis.aPagar, formato)}</span>
+        </Kpi>
+        <Kpi rotulo={t('financeiro.resultadoMes')} destaque>{moeda(kpis.resultadoMes, formato)}</Kpi>
+        <Kpi rotulo={t('financeiro.atrasados')}>{kpis.atrasados}</Kpi>
       </div>
 
-      {lista.data!.length === 0 ? (
-        <EstadoVazio />
-      ) : (
-        <Tabela cabecalhos={[
-          t('financeiro.descricao'), t('financeiro.categoria'), t('financeiro.vencimento'),
-          t('financeiro.valor'), t('orcamento.status'), '',
-        ]}>
-          {lista.data!.map((l) => (
-            <tr key={l.id} className="hover:bg-surface-2/50">
-              <td className="px-3 py-2.5 font-semibold text-ink">{l.descricao}</td>
-              <td className="px-3 py-2.5 text-texto-2">{l.categoria}</td>
-              <td className="px-3 py-2.5 text-texto-2">{dataCurta(l.vencimento, formato)}</td>
-              <td className={`px-3 py-2.5 font-semibold ${l.tipo === 'entrada' ? 'text-ok' : 'text-erro'}`}>
-                {l.tipo === 'entrada' ? '+' : '−'}<Dinheiro centavos={Number(l.valor)} />
-              </td>
-              <td className="px-3 py-2.5">
-                <Etiqueta cor={l.status === 'pago' ? 'verde' : l.status === 'cancelado' ? 'cinza' : 'amarelo'}>
-                  {t(`financeiro.statusLabel.${l.status}`)}
-                </Etiqueta>
-              </td>
-              <td className="px-3 py-2.5 text-right">
-                {l.status === 'pendente' && pode('financeiro', 'editar') && (
-                  <Botao variante="fantasma" onClick={() => marcarPago(l)}>{t('financeiro.marcarPago')}</Botao>
-                )}
-              </td>
-            </tr>
+      <Cartao className="mb-4">
+        <h2 className="mb-1 text-sm font-bold text-ink">{t('dashboard.fluxoCaixa')}</h2>
+        <div className="mb-1 flex gap-3 text-[10px] font-semibold text-texto-2">
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-ok" /> {t('financeiro.tipoLabel.entrada')}s</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-erro/70" /> {t('financeiro.tipoLabel.saida')}s</span>
+        </div>
+        <GraficoBarrasDuplas meses={kpis.fluxo6} />
+      </Cartao>
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        <Selecao value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} className="!w-auto">
+          <option value="">{t('financeiro.todosTipos')}</option>
+          <option value="entrada">{t('financeiro.tipoLabel.entrada')}</option>
+          <option value="saida">{t('financeiro.tipoLabel.saida')}</option>
+        </Selecao>
+        <Selecao value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)} className="!w-auto">
+          <option value="">{t('orcamento.todosStatus')}</option>
+          {['pendente', 'pago', 'atrasado', 'cancelado'].map((s) => (
+            <option key={s} value={s}>{t(`financeiro.statusLabel.${s}`)}</option>
           ))}
-        </Tabela>
-      )}
+        </Selecao>
+      </div>
+
+      {(() => {
+        const filtrados = (lista.data ?? []).filter(
+          (l) => (!filtroTipo || l.tipo === filtroTipo) && (!filtroStatus || l.status === filtroStatus),
+        );
+        return filtrados.length === 0 ? (
+          <EstadoVazio />
+        ) : (
+          <TabelaDados<Lancamento>
+            colunas={[
+              { titulo: t('financeiro.descricao'), principal: true, render: (l) => <span className="font-semibold text-ink">{l.descricao}</span> },
+              { titulo: t('financeiro.categoria'), render: (l) => <span className="text-texto-2">{l.categoria}</span> },
+              { titulo: t('financeiro.vencimento'), render: (l) => <span className="text-texto-2">{dataCurta(l.vencimento, formato)}</span> },
+              {
+                titulo: t('financeiro.valor'),
+                numerica: true,
+                render: (l) => (
+                  <span className={`font-semibold ${l.tipo === 'entrada' ? 'text-ok' : 'text-erro'}`}>
+                    {l.tipo === 'entrada' ? '+' : '−'}<Dinheiro centavos={Number(l.valor)} />
+                  </span>
+                ),
+              },
+              {
+                titulo: t('orcamento.status'),
+                render: (l) => (
+                  <Etiqueta cor={l.status === 'pago' ? 'verde' : l.status === 'cancelado' ? 'cinza' : 'amarelo'}>
+                    {t(`financeiro.statusLabel.${l.status}`)}
+                  </Etiqueta>
+                ),
+              },
+            ]}
+            linhas={filtrados}
+            chave={(l) => l.id}
+            acoes={(l) =>
+              l.status === 'pendente' && pode('financeiro', 'editar') ? (
+                <Botao variante="fantasma" onClick={() => marcarPago(l)}>{t('financeiro.marcarPago')}</Botao>
+              ) : null
+            }
+          />
+        );
+      })()}
 
       <Modal aberto={novo} titulo={t('financeiro.novoLancamento')} onFechar={() => setNovo(false)}>
         <form onSubmit={salvar} className="space-y-3">

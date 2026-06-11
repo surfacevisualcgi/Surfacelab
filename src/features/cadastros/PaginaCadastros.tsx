@@ -3,52 +3,147 @@
  * custos fixos, mão de obra, energia. (Estrutura do protótipo, pele Surface.)
  */
 import { useState, type FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { supabase } from '@/lib/supabase';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
 import { deCentavos, paraCentavos } from '@/lib/formato';
 import {
-  Botao, CabecalhoPagina, Campo, Carregando, Dinheiro, Entrada, EstadoErro,
-  EstadoVazio, Etiqueta, Modal, Selecao, Tabela,
+  Botao, CabecalhoPagina, Campo, Carregando, Cartao, Dinheiro, Entrada,
+  EstadoErro, EstadoVazio, Etiqueta, Modal, Selecao, Tabela,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 
 type Aba = 'impressoras' | 'materiais' | 'canais' | 'custosFixos' | 'maoDeObra' | 'energia';
 
+/**
+ * Estrutura v2 (tela 17): central de cadastros como GRADE DE CARTÕES de
+ * atalho agrupados por seção, com anel de progresso de configuração e
+ * pendências no painel lateral. Clicar num cartão abre a seção.
+ */
 export function PaginaCadastros() {
   const { t } = useTranslation();
-  const [aba, setAba] = useState<Aba>('materiais');
-  const abas: { id: Aba; rotulo: string }[] = [
-    { id: 'materiais', rotulo: t('cadastros.materiais') },
-    { id: 'impressoras', rotulo: t('cadastros.impressoras') },
-    { id: 'canais', rotulo: t('cadastros.canais') },
-    { id: 'custosFixos', rotulo: t('cadastros.custosFixos') },
-    { id: 'maoDeObra', rotulo: t('cadastros.maoDeObra') },
-    { id: 'energia', rotulo: t('cadastros.energia') },
+  const { ativa } = useAuth();
+  const [secao, setSecao] = useState<Aba | null>(null);
+
+  const contagens = useQuery({
+    queryKey: ['cadastros-contagens', ativa?.tenant_id],
+    enabled: !!ativa,
+    queryFn: async () => {
+      const tabelas = ['material', 'impressora', 'canal_venda', 'custo_fixo', 'tarefa_mao_obra', 'perfil_energia'] as const;
+      const resultados = await Promise.all(
+        tabelas.map((tb) =>
+          supabase.from(tb).select('id', { count: 'exact', head: true }).is('deleted_at', null),
+        ),
+      );
+      return Object.fromEntries(tabelas.map((tb, i) => [tb, resultados[i].count ?? 0]));
+    },
+  });
+
+  const c = contagens.data ?? {};
+  const cartoes: { id: Aba; tabela: string; rotulo: string; descricao: string; grupo: string; icone: string }[] = [
+    { id: 'materiais', tabela: 'material', rotulo: t('cadastros.materiais'), descricao: t('cadastros.descMateriais'), grupo: 'operacao', icone: '🧵' },
+    { id: 'impressoras', tabela: 'impressora', rotulo: t('cadastros.impressoras'), descricao: t('cadastros.descImpressoras'), grupo: 'operacao', icone: '🖨' },
+    { id: 'energia', tabela: 'perfil_energia', rotulo: t('cadastros.energia'), descricao: t('cadastros.descEnergia'), grupo: 'operacao', icone: '⚡' },
+    { id: 'canais', tabela: 'canal_venda', rotulo: t('cadastros.canais'), descricao: t('cadastros.descCanais'), grupo: 'comercial', icone: '🛒' },
+    { id: 'custosFixos', tabela: 'custo_fixo', rotulo: t('cadastros.custosFixos'), descricao: t('cadastros.descCustosFixos'), grupo: 'comercial', icone: '📋' },
+    { id: 'maoDeObra', tabela: 'tarefa_mao_obra', rotulo: t('cadastros.maoDeObra'), descricao: t('cadastros.descMaoDeObra'), grupo: 'comercial', icone: '👤' },
   ];
+  const pendentes = cartoes.filter((card) => (c[card.tabela] ?? 0) === 0);
+  const progresso = cartoes.length > 0 ? ((cartoes.length - pendentes.length) / cartoes.length) * 100 : 0;
+
+  if (secao) {
+    const card = cartoes.find((x) => x.id === secao)!;
+    return (
+      <div>
+        <button onClick={() => setSecao(null)}
+          className="mb-2 text-xs font-bold text-brand-azul hover:underline">
+          ← {t('cadastros.titulo')}
+        </button>
+        <CabecalhoPagina titulo={card.rotulo} subtitulo={card.descricao} />
+        {secao === 'materiais' && <AbaMateriais />}
+        {secao === 'impressoras' && <AbaImpressoras />}
+        {secao === 'canais' && <AbaCanais />}
+        {secao === 'custosFixos' && <AbaCustosFixos />}
+        {secao === 'maoDeObra' && <AbaMaoDeObra />}
+        {secao === 'energia' && <AbaEnergia />}
+      </div>
+    );
+  }
+
+  const grupos: { id: string; rotulo: string }[] = [
+    { id: 'operacao', rotulo: t('cadastros.grupoOperacao') },
+    { id: 'comercial', rotulo: t('cadastros.grupoComercial') },
+  ];
+
   return (
     <div>
-      <CabecalhoPagina titulo={t('cadastros.titulo')} />
-      <div className="mb-4 flex flex-wrap gap-1 border-b border-borda">
-        {abas.map((a) => (
-          <button
-            key={a.id}
-            onClick={() => setAba(a.id)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold ${
-              aba === a.id
-                ? 'border-brand-roxo text-ink'
-                : 'border-transparent text-texto-2 hover:text-ink'
-            }`}
-          >
-            {a.rotulo}
-          </button>
-        ))}
+      <CabecalhoPagina titulo={t('cadastros.titulo')} subtitulo={t('cadastros.subtitulo')} />
+      <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
+        <div className="space-y-5">
+          {grupos.map((g) => (
+            <section key={g.id}>
+              <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-texto-2">
+                {g.rotulo}
+              </h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {cartoes.filter((card) => card.grupo === g.id).map((card) => (
+                  <button key={card.id} onClick={() => setSecao(card.id)}
+                    className="flex items-start gap-3 rounded-xl border border-borda bg-white p-3.5 text-left transition-colors hover:border-brand-azul hover:bg-brand-azul/5">
+                    <span className="text-xl" aria-hidden>{card.icone}</span>
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-2 text-sm font-bold text-ink">
+                        {card.rotulo}
+                        <span className="rounded-full bg-surface-2 px-1.5 text-[10px] font-bold text-texto-2">
+                          {c[card.tabela] ?? '…'}
+                        </span>
+                      </span>
+                      <span className="mt-0.5 block text-xs text-texto-2">{card.descricao}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        {/* painel lateral: anel de progresso + pendências (v2) */}
+        <Cartao className="h-fit lg:sticky lg:top-16">
+          <h2 className="mb-3 text-sm font-bold text-ink">{t('cadastros.progressoTitulo')}</h2>
+          <div className="flex items-center gap-4">
+            <svg viewBox="0 0 80 80" className="size-20 shrink-0" role="img" aria-label={`${Math.round(progresso)}%`}>
+              <defs>
+                <linearGradient id="prog-g" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="var(--color-brand-azul)" />
+                  <stop offset="1" stopColor="var(--color-brand-magenta)" />
+                </linearGradient>
+              </defs>
+              <circle cx="40" cy="40" r="32" fill="none" stroke="var(--color-surface-2)" strokeWidth="9" />
+              <circle cx="40" cy="40" r="32" fill="none" stroke="url(#prog-g)" strokeWidth="9"
+                strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 32 * (progresso / 100)} ${2 * Math.PI * 32}`}
+                transform="rotate(-90 40 40)" />
+              <text x="40" y="45" textAnchor="middle" fontSize="16" fontWeight="800" fill="var(--color-ink)">
+                {Math.round(progresso)}%
+              </text>
+            </svg>
+            <p className="text-xs text-texto-2">{t('cadastros.progressoDica')}</p>
+          </div>
+          {pendentes.length > 0 && (
+            <ul className="mt-3 space-y-1.5 border-t border-borda pt-3">
+              {pendentes.map((card) => (
+                <li key={card.id}>
+                  <button onClick={() => setSecao(card.id)}
+                    className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs font-semibold text-ink hover:bg-surface-2">
+                    {card.rotulo}
+                    <span className="text-alerta">{t('cadastros.pendente')}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Cartao>
       </div>
-      {aba === 'materiais' && <AbaMateriais />}
-      {aba === 'impressoras' && <AbaImpressoras />}
-      {aba === 'canais' && <AbaCanais />}
-      {aba === 'custosFixos' && <AbaCustosFixos />}
-      {aba === 'maoDeObra' && <AbaMaoDeObra />}
-      {aba === 'energia' && <AbaEnergia />}
     </div>
   );
 }

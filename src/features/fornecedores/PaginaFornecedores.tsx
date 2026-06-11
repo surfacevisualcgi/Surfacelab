@@ -1,11 +1,11 @@
-/** Tela 16 — Fornecedores (CRUD). */
-import { useState, type FormEvent } from 'react';
+/** Tela 16 — Fornecedores (estrutura v2): 4 KPIs + tabela enxuta com estrelas. */
+import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
 import { deCentavos, paraCentavos } from '@/lib/formato';
 import {
   Botao, CabecalhoPagina, Campo, Carregando, Dinheiro, Entrada, EstadoErro,
-  EstadoVazio, Modal, Tabela,
+  EstadoVazio, Kpi, Modal, TabelaDados,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 
@@ -47,6 +47,22 @@ export function PaginaFornecedores() {
     }
   }
 
+  const kpis = useMemo(() => {
+    const fs = lista.data ?? [];
+    const comPrazo = fs.filter((fo) => fo.prazo_entrega_dias != null);
+    const comNota = fs.filter((fo) => fo.avaliacao != null);
+    return {
+      ativos: fs.length,
+      prazoMedio: comPrazo.length > 0
+        ? Math.round(comPrazo.reduce((s, fo) => s + Number(fo.prazo_entrega_dias), 0) / comPrazo.length)
+        : null,
+      notaMedia: comNota.length > 0
+        ? comNota.reduce((s, fo) => s + Number(fo.avaliacao), 0) / comNota.length
+        : null,
+      comPedidoMinimo: fs.filter((fo) => fo.pedido_minimo != null && fo.pedido_minimo > 0).length,
+    };
+  }, [lista.data]);
+
   if (lista.isLoading) return <Carregando />;
   if (lista.isError) return <EstadoErro onRetry={() => lista.refetch()} />;
 
@@ -56,28 +72,33 @@ export function PaginaFornecedores() {
         titulo={t('fornecedor.titulo')}
         acoes={pode('fornecedores', 'criar') ? <Botao onClick={() => setEditando({})}>+ {t('fornecedor.novo')}</Botao> : undefined}
       />
+
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi rotulo={t('fornecedor.kpiAtivos')} destaque>{kpis.ativos}</Kpi>
+        <Kpi rotulo={t('fornecedor.kpiPrazoMedio')}>{kpis.prazoMedio != null ? `${kpis.prazoMedio}d` : '—'}</Kpi>
+        <Kpi rotulo={t('fornecedor.kpiNotaMedia')}>{kpis.notaMedia != null ? `★ ${kpis.notaMedia.toFixed(1)}` : '—'}</Kpi>
+        <Kpi rotulo={t('fornecedor.kpiPedidoMinimo')}>{kpis.comPedidoMinimo}</Kpi>
+      </div>
+
       {lista.data!.length === 0 ? (
         <EstadoVazio acao={pode('fornecedores', 'criar') ? <Botao onClick={() => setEditando({})}>+ {t('fornecedor.novo')}</Botao> : undefined} />
       ) : (
-        <Tabela cabecalhos={[
-          t('fornecedor.nome'), 'Contato', t('fornecedor.prazoEntrega'),
-          t('fornecedor.pedidoMinimo'), t('fornecedor.avaliacao'), '',
-        ]}>
-          {lista.data!.map((fo) => (
-            <tr key={fo.id} className="hover:bg-surface-2/50">
-              <td className="px-3 py-2.5 font-semibold text-ink">{fo.nome}</td>
-              <td className="px-3 py-2.5 text-texto-2">{fo.contato_nome ?? fo.contato_telefone ?? '—'}</td>
-              <td className="px-3 py-2.5 tabular-nums">{fo.prazo_entrega_dias != null ? `${fo.prazo_entrega_dias}d` : '—'}</td>
-              <td className="px-3 py-2.5"><Dinheiro centavos={fo.pedido_minimo} /></td>
-              <td className="px-3 py-2.5">{fo.avaliacao ? '★'.repeat(fo.avaliacao) : '—'}</td>
-              <td className="px-3 py-2.5 text-right">
-                {pode('fornecedores', 'editar') && (
-                  <Botao variante="fantasma" onClick={() => setEditando(fo)}>{t('acoes.editar')}</Botao>
-                )}
-              </td>
-            </tr>
-          ))}
-        </Tabela>
+        <TabelaDados<Fornecedor>
+          colunas={[
+            { titulo: t('fornecedor.nome'), principal: true, render: (fo) => <span className="font-semibold text-ink">{fo.nome}</span> },
+            { titulo: 'Contato', render: (fo) => <span className="text-texto-2">{fo.contato_nome ?? fo.contato_telefone ?? '—'}</span> },
+            { titulo: t('fornecedor.prazoEntrega'), numerica: true, render: (fo) => fo.prazo_entrega_dias != null ? `${fo.prazo_entrega_dias}d` : '—' },
+            { titulo: t('fornecedor.pedidoMinimo'), numerica: true, render: (fo) => <Dinheiro centavos={fo.pedido_minimo} /> },
+            { titulo: t('fornecedor.avaliacao'), render: (fo) => <span className="text-alerta">{fo.avaliacao ? '★'.repeat(fo.avaliacao) : '—'}</span> },
+          ]}
+          linhas={lista.data!}
+          chave={(fo) => fo.id}
+          acoes={(fo) =>
+            pode('fornecedores', 'editar') ? (
+              <Botao variante="fantasma" onClick={() => setEditando(fo)}>{t('acoes.editar')}</Botao>
+            ) : null
+          }
+        />
       )}
 
       <Modal aberto={!!editando} titulo={editando?.id ? t('acoes.editar') : t('fornecedor.novo')} onFechar={() => setEditando(null)}>

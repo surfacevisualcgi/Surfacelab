@@ -3,14 +3,15 @@
  * consentimento de marketing auditável, exportar dados, anonimizar
  * preservando o registro fiscal. Abrir a ficha registra acesso à PII.
  */
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
 import { supabase } from '@/lib/supabase';
 import { VERSAO_TERMOS } from '@/auth/AuthProvider';
+import { moeda } from '@/lib/formato';
 import {
   Botao, CabecalhoPagina, Campo, Carregando, Entrada, EstadoErro, EstadoVazio,
-  Etiqueta, Modal, Selecao, Tabela,
+  Etiqueta, Kpi, Modal, Selecao, TabelaDados,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 
@@ -24,8 +25,12 @@ interface ClienteView {
 
 export function PaginaClientes() {
   const { t } = useTranslation();
-  const { pode, flag } = useAuth();
+  const { pode, flag, formato } = useAuth();
   const lista = useLista<ClienteView>('v_cliente', { ordem: 'nome', desc: false });
+  const pedidos = useLista<{ cliente_id: string | null; total: number; status: string }>('v_pedido', {
+    selecao: 'cliente_id, total, status',
+  });
+  const [filtroTipo, setFiltroTipo] = useState('');
   const crud = useCrud('cliente', ['v_cliente']);
   const [editando, setEditando] = useState<Partial<ClienteView> | null>(null);
   const [confirmaAnonimizar, setConfirmaAnonimizar] = useState<ClienteView | null>(null);
@@ -97,8 +102,22 @@ export function PaginaClientes() {
     URL.revokeObjectURL(a.href);
   }
 
+  const kpis = useMemo(() => {
+    const cls = (lista.data ?? []).filter((c) => !c.anonimizado);
+    const mesAtual = new Date().toISOString().slice(0, 7);
+    const peds = (pedidos.data ?? []).filter((p) => p.status !== 'cancelado');
+    return {
+      ativos: cls.length,
+      novosNoMes: cls.filter((c) => (c as unknown as { created_at?: string }).created_at?.slice(0, 7) === mesAtual).length,
+      totalComprado: peds.reduce((s, p) => s + Number(p.total), 0),
+      comConsentimento: cls.filter((c) => c.consentimento_marketing).length,
+    };
+  }, [lista.data, pedidos.data]);
+
   if (lista.isLoading) return <Carregando />;
   if (lista.isError) return <EstadoErro onRetry={() => lista.refetch()} />;
+
+  const filtrados = (lista.data ?? []).filter((c) => !filtroTipo || c.tipo === filtroTipo);
 
   return (
     <div>
@@ -106,39 +125,65 @@ export function PaginaClientes() {
         titulo={t('cliente.titulo')}
         acoes={pode('clientes', 'criar') ? <Botao onClick={() => setEditando({})}>+ {t('cliente.novo')}</Botao> : undefined}
       />
-      {!podePii && (
-        <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-xs text-texto-2">
-          🔒 {t('cliente.piiMascarada')}
-        </p>
-      )}
+
+      {/* 4 KPIs (v2) */}
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi rotulo={t('cliente.kpiAtivos')} destaque>{kpis.ativos}</Kpi>
+        <Kpi rotulo={t('cliente.kpiNovos')}>{kpis.novosNoMes}</Kpi>
+        <Kpi rotulo={t('cliente.kpiTotalComprado')}>{moeda(kpis.totalComprado, formato)}</Kpi>
+        <Kpi rotulo={t('cliente.kpiMarketing')}>{kpis.comConsentimento}</Kpi>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Selecao value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} className="!w-auto">
+          <option value="">{t('cliente.todosTipos')}</option>
+          <option value="pf">Pessoa física</option>
+          <option value="pj">Pessoa jurídica</option>
+        </Selecao>
+        {!podePii && (
+          <p className="rounded-lg bg-surface-2 px-3 py-2 text-xs text-texto-2">
+            🔒 {t('cliente.piiMascarada')}
+          </p>
+        )}
+      </div>
       {erro && <p className="mb-3 text-xs font-semibold text-erro">{erro}</p>}
 
-      {lista.data!.length === 0 ? (
-        <EstadoVazio acao={pode('clientes', 'criar') ? <Botao onClick={() => setEditando({})}>+ {t('cliente.novo')}</Botao> : undefined} />
+      {filtrados.length === 0 ? (
+        <EstadoVazio acao={pode('clientes', 'criar') && !filtroTipo ? <Botao onClick={() => setEditando({})}>+ {t('cliente.novo')}</Botao> : undefined} />
       ) : (
-        <Tabela cabecalhos={[t('cliente.nome'), t('cliente.contato'), t('cliente.cidade'), 'Marketing', '']}>
-          {lista.data!.map((c) => (
-            <tr key={c.id} className={`hover:bg-surface-2/50 ${c.anonimizado ? 'opacity-50' : ''}`}>
-              <td className="px-3 py-2.5 font-semibold text-ink">
-                {c.nome} {c.anonimizado && <Etiqueta>LGPD</Etiqueta>}
-              </td>
-              <td className="px-3 py-2.5 text-texto-2">
-                {podePii ? (c.telefone_whatsapp ?? c.email ?? '—') : '•••'}
-              </td>
-              <td className="px-3 py-2.5 text-texto-2">{c.cidade ?? '—'}</td>
-              <td className="px-3 py-2.5">
+        <TabelaDados<ClienteView>
+          colunas={[
+            {
+              titulo: t('cliente.nome'),
+              principal: true,
+              render: (c) => (
+                <span className={`font-semibold text-ink ${c.anonimizado ? 'opacity-50' : ''}`}>
+                  {c.nome} {c.anonimizado && <Etiqueta>LGPD</Etiqueta>}
+                  {podePii && c.cpf_cnpj && (
+                    <span className="block text-[10px] font-normal text-texto-2">{c.cpf_cnpj}</span>
+                  )}
+                </span>
+              ),
+            },
+            { titulo: t('cliente.contato'), render: (c) => <span className="text-texto-2">{podePii ? (c.telefone_whatsapp ?? c.email ?? '—') : '•••'}</span> },
+            { titulo: t('cliente.cidade'), render: (c) => <span className="text-texto-2">{c.cidade ?? '—'}</span> },
+            {
+              titulo: 'Marketing',
+              render: (c) => (
                 <Etiqueta cor={c.consentimento_marketing ? 'verde' : 'cinza'}>
                   {c.consentimento_marketing ? 'Sim' : 'Não'}
                 </Etiqueta>
-              </td>
-              <td className="px-3 py-2.5 text-right">
-                {!c.anonimizado && pode('clientes', 'editar') && (
-                  <Botao variante="fantasma" onClick={() => abrirFicha(c)}>{t('acoes.editar')}</Botao>
-                )}
-              </td>
-            </tr>
-          ))}
-        </Tabela>
+              ),
+            },
+          ]}
+          linhas={filtrados}
+          chave={(c) => c.id}
+          acoes={(c) =>
+            !c.anonimizado && pode('clientes', 'editar') ? (
+              <Botao variante="fantasma" onClick={() => abrirFicha(c)}>{t('acoes.editar')}</Botao>
+            ) : null
+          }
+        />
       )}
 
       <Modal aberto={!!editando} titulo={editando?.id ? (editando.nome ?? '') : t('cliente.novo')} onFechar={() => setEditando(null)} largura="max-w-xl">
