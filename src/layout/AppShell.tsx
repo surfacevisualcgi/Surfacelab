@@ -95,12 +95,34 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-dvh bg-surface-2">
-      {/* sidebar desktop */}
+      {/* sidebar desktop — rodapé com plano e usuário (estrutura v2) */}
       <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col bg-ink py-4 lg:flex">
         <div className="mb-5 px-4">
           <Logo claro tamanho={26} />
         </div>
-        {nav}
+        <div className="flex-1 overflow-y-auto">{nav}</div>
+        <div className="mt-3 border-t border-white/10 px-4 pt-3">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-white/40">
+            {t('config.planoAtual')}
+          </p>
+          <p className="text-xs font-bold grad-texto">
+            {t(`config.planoLabel.${ativa?.tenant.plano ?? 'gratuito'}`)}
+          </p>
+          <button onClick={() => navigate('/conta')}
+            className="mt-2 flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left hover:bg-white/10">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full grad-acento text-[9px] font-extrabold text-white">
+              {iniciais}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[11px] font-semibold text-white/85">
+                {(session?.user?.user_metadata?.nome_exibicao as string | undefined) ?? session?.user?.email}
+              </span>
+              <span className="block text-[10px] text-white/45">
+                {t(`config.papelLabel.${ativa?.papel ?? 'leitura'}`)}
+              </span>
+            </span>
+          </button>
+        </div>
       </aside>
 
       {/* gaveta mobile */}
@@ -195,9 +217,48 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6">
+        <main className="mx-auto w-full max-w-6xl flex-1 p-4 pb-24 sm:p-6 lg:pb-6">
           <Outlet />
         </main>
+
+        {/* bottom nav mobile — 5 itens, Calculadora central em destaque (v2) */}
+        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-borda bg-white/95 backdrop-blur lg:hidden"
+          aria-label="Navegação principal">
+          <div className="mx-auto grid max-w-md grid-cols-5">
+            {[
+              { para: '/', rotulo: t('nav.visaoGeral'), icone: ICONES.casa, fim: true },
+              { para: '/produtos', rotulo: t('nav.produtos'), icone: ICONES.caixa },
+              { para: '/calculadora', rotulo: t('nav.calculadora'), icone: ICONES.calc, central: true },
+              { para: '/pedidos', rotulo: t('nav.pedidos').split(' ')[0], icone: ICONES.kanban },
+              { para: '/configuracoes', rotulo: t('nav.configuracoes'), icone: ICONES.engren },
+            ].map((item) => (
+              <NavLink key={item.para} to={item.para} end={item.fim}
+                className={({ isActive }) =>
+                  `flex flex-col items-center gap-0.5 px-1 pb-2 pt-1.5 text-[10px] font-semibold ${
+                    item.central
+                      ? ''
+                      : isActive ? 'text-brand-roxo' : 'text-texto-2'
+                  }`
+                }>
+                {({ isActive }) =>
+                  item.central ? (
+                    <>
+                      <span className={`-mt-4 flex size-11 items-center justify-center rounded-full text-white shadow-lg ${isActive ? 'grad-acento' : 'bg-ink'}`}>
+                        <Icone d={item.icone} />
+                      </span>
+                      <span className={isActive ? 'text-brand-roxo' : 'text-texto-2'}>{item.rotulo}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icone d={item.icone} />
+                      <span className="truncate">{item.rotulo}</span>
+                    </>
+                  )
+                }
+              </NavLink>
+            ))}
+          </div>
+        </nav>
       </div>
     </div>
   );
