@@ -5,6 +5,7 @@ import { AppShell } from './layout/AppShell';
 import { Carregando } from './components/ui';
 import { PaginaDashboard } from './features/dashboard/PaginaDashboard';
 import { PaginaModelos } from './features/modelos/PaginaModelos';
+import { PaginaModeloDetalhe } from './features/modelos/PaginaModeloDetalhe';
 import { PaginaProdutos } from './features/produtos/PaginaProdutos';
 import { PaginaProdutoDetalhe } from './features/produtos/PaginaProdutoDetalhe';
 import { PaginaCalculadora } from './features/calculadora/PaginaCalculadora';
@@ -49,6 +50,7 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route index element={<PaginaDashboard />} />
             <Route path="/modelos" element={<PaginaModelos />} />
+            <Route path="/modelos/:id" element={<PaginaModeloDetalhe />} />
             <Route path="/produtos" element={<PaginaProdutos />} />
             <Route path="/produtos/:id" element={<PaginaProdutoDetalhe />} />
             <Route path="/calculadora" element={<PaginaCalculadora />} />

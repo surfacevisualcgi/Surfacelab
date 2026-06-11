@@ -1,14 +1,16 @@
 /**
- * Tela 02/05 — Catálogo de produtos (item vendável).
- * Leitura via v_produto (custos mascarados sem flag); escrita na tabela base.
+ * Tela 02 — Catálogo de produtos (estrutura v2): busca + filtro numa linha,
+ * grade de cards com foto, nome, PREÇO em destaque e linha discreta com
+ * margem + chip de status. Leitura via v_produto (custos mascarados).
  */
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
+import { percentual } from '@/lib/formato';
 import {
   Botao, CabecalhoPagina, Campo, Carregando, Dinheiro, Entrada, EstadoErro,
-  EstadoVazio, Etiqueta, Modal, Selecao, Tabela,
+  EstadoVazio, Etiqueta, Modal, Selecao,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 
@@ -18,6 +20,7 @@ export interface ProdutoView {
   nome: string;
   status: string;
   disponibilidade: string;
+  fotos: string[];
   custo_atual: number | null; // null = mascarado
   preco_sugerido: number | null;
   preco_praticado: number;
@@ -26,12 +29,24 @@ export interface ProdutoView {
 
 export function PaginaProdutos() {
   const { t } = useTranslation();
-  const { pode } = useAuth();
+  const { pode, formato } = useAuth();
   const navigate = useNavigate();
   const lista = useLista<ProdutoView>('v_produto', { ordem: 'nome', desc: false });
   const crud = useCrud('produto', ['v_produto']);
   const [novo, setNovo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [busca, setBusca] = useState('');
+  const [filtroDisp, setFiltroDisp] = useState('');
+
+  const filtrados = useMemo(
+    () =>
+      (lista.data ?? []).filter(
+        (p) =>
+          (!busca || p.nome.toLowerCase().includes(busca.toLowerCase()) || p.sku?.toLowerCase().includes(busca.toLowerCase())) &&
+          (!filtroDisp || p.disponibilidade === filtroDisp),
+      ),
+    [lista.data, busca, filtroDisp],
+  );
 
   async function criar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -56,38 +71,72 @@ export function PaginaProdutos() {
     <div>
       <CabecalhoPagina
         titulo={t('produto.titulo')}
+        subtitulo={t('produto.subtitulo')}
         acoes={pode('produtos', 'criar') ? <Botao onClick={() => setNovo(true)}>+ {t('produto.novo')}</Botao> : undefined}
       />
-      {lista.data!.length === 0 ? (
-        <EstadoVazio acao={pode('produtos', 'criar') ? <Botao onClick={() => setNovo(true)}>+ {t('produto.novo')}</Botao> : undefined} />
+
+      {/* barra de busca + filtro enxuta numa linha (v2) */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Entrada
+          placeholder={t('acoes.buscar')}
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          className="max-w-xs"
+        />
+        <Selecao value={filtroDisp} onChange={(e) => setFiltroDisp(e.target.value)} className="!w-auto">
+          <option value="">{t('produto.todasDisponibilidades')}</option>
+          <option value="pronta_entrega">{t('produto.dispLabel.pronta_entrega')}</option>
+          <option value="sob_demanda">{t('produto.dispLabel.sob_demanda')}</option>
+        </Selecao>
+      </div>
+
+      {filtrados.length === 0 ? (
+        <EstadoVazio
+          mensagem={busca || filtroDisp ? t('estados.semResultados') : undefined}
+          acao={pode('produtos', 'criar') && !busca ? <Botao onClick={() => setNovo(true)}>+ {t('produto.novo')}</Botao> : undefined}
+        />
       ) : (
-        <Tabela cabecalhos={[
-          t('produto.nome'), t('produto.disponibilidade'),
-          t('produto.custoAtual'), t('produto.precoPraticado'), '',
-        ]}>
-          {lista.data!.map((p) => (
-            <tr key={p.id} className="hover:bg-surface-2/50">
-              <td className="px-3 py-2.5">
-                <Link to={`/produtos/${p.id}`} className="font-semibold text-ink hover:text-brand-azul">
-                  {p.nome}
-                </Link>
-                {p.sku && <span className="ml-1.5 text-xs text-texto-2">{p.sku}</span>}
-              </td>
-              <td className="px-3 py-2.5">
-                <Etiqueta cor={p.disponibilidade === 'pronta_entrega' ? 'verde' : 'cinza'}>
-                  {t(`produto.dispLabel.${p.disponibilidade}`)}
-                </Etiqueta>
-              </td>
-              <td className="px-3 py-2.5"><Dinheiro centavos={p.custo_atual} /></td>
-              <td className="px-3 py-2.5"><Dinheiro centavos={p.preco_praticado} /></td>
-              <td className="px-3 py-2.5 text-right">
-                <Botao variante="fantasma" onClick={() => navigate(`/calculadora?produto=${p.id}`)}>
-                  {t('produto.calcularPreco')}
-                </Botao>
-              </td>
-            </tr>
-          ))}
-        </Tabela>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          {filtrados.map((p) => {
+            const preco = p.preco_praticado > 0 ? p.preco_praticado : p.preco_sugerido;
+            const margem =
+              p.custos_visiveis && preco && p.custo_atual != null && preco > 0
+                ? (preco - p.custo_atual) / preco
+                : null;
+            return (
+              <Link key={p.id} to={`/produtos/${p.id}`}
+                className="group overflow-hidden rounded-xl border border-borda bg-white transition-shadow hover:shadow-md">
+                {/* foto (placeholder até o upload entrar) */}
+                <div className="flex aspect-[4/3] items-center justify-center bg-surface-2">
+                  {p.fotos?.[0] ? (
+                    <img src={p.fotos[0]} alt="" className="size-full object-cover" />
+                  ) : (
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="url(#g)" strokeWidth="1.2" className="opacity-50">
+                      <defs>
+                        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0" stopColor="#4b6ce0" /><stop offset="1" stopColor="#e5179a" />
+                        </linearGradient>
+                      </defs>
+                      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8ZM12 4l6.3 3.6L12 11.2 5.7 7.6 12 4Z" />
+                    </svg>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="truncate text-sm font-semibold text-ink group-hover:text-brand-azul">{p.nome}</p>
+                  <p className="mt-0.5 text-base font-extrabold tabular-nums text-ink">
+                    {preco ? <Dinheiro centavos={preco} /> : <span className="font-normal text-texto-2">—</span>}
+                  </p>
+                  <div className="mt-1.5 flex items-center justify-between gap-1 text-[11px] text-texto-2">
+                    <span>{margem != null ? `${t('produto.margemCurta')} ${percentual(margem, formato)}` : p.sku ?? ''}</span>
+                    <Etiqueta cor={p.disponibilidade === 'pronta_entrega' ? 'verde' : 'cinza'}>
+                      {t(`produto.dispLabel.${p.disponibilidade}`)}
+                    </Etiqueta>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       )}
 
       <Modal aberto={novo} titulo={t('produto.novo')} onFechar={() => setNovo(false)}>

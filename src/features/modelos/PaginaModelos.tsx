@@ -2,13 +2,13 @@
  * Telas 03/04 — Catálogo de modelos 3D (ficha técnica da peça impressa).
  */
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
 import { duracao } from '@/lib/formato';
 import {
   Botao, CabecalhoPagina, Campo, Carregando, Entrada, EstadoErro, EstadoVazio,
-  Etiqueta, Modal, Selecao, Tabela,
+  Etiqueta, Modal, Selecao,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 import type { Material } from '../cadastros/PaginaCadastros';
@@ -40,6 +40,7 @@ export function PaginaModelos() {
   const crud = useCrud('modelo_3d');
   const [editando, setEditando] = useState<Partial<Modelo3D> | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [busca, setBusca] = useState('');
 
   async function salvar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -72,46 +73,74 @@ export function PaginaModelos() {
   if (lista.isLoading) return <Carregando />;
   if (lista.isError) return <EstadoErro onRetry={() => lista.refetch()} />;
 
+  const filtrados = (lista.data ?? []).filter(
+    (m) => !busca || m.nome.toLowerCase().includes(busca.toLowerCase())
+      || m.codigo_interno?.toLowerCase().includes(busca.toLowerCase()),
+  );
+
   return (
     <div>
       <CabecalhoPagina
         titulo={t('modelo.titulo')}
+        subtitulo={t('modelo.subtitulo')}
         acoes={pode('modelos', 'criar') ? <Botao onClick={() => setEditando({})}>+ {t('modelo.novo')}</Botao> : undefined}
       />
-      {lista.data!.length === 0 ? (
-        <EstadoVazio acao={pode('modelos', 'criar') ? <Botao onClick={() => setEditando({})}>+ {t('modelo.novo')}</Botao> : undefined} />
+      <div className="mb-4">
+        <Entrada placeholder={t('acoes.buscar')} value={busca}
+          onChange={(e) => setBusca(e.target.value)} className="max-w-xs" />
+      </div>
+
+      {filtrados.length === 0 ? (
+        <EstadoVazio
+          mensagem={busca ? t('estados.semResultados') : undefined}
+          acao={pode('modelos', 'criar') && !busca ? <Botao onClick={() => setEditando({})}>+ {t('modelo.novo')}</Botao> : undefined}
+        />
       ) : (
-        <Tabela cabecalhos={[
-          t('modelo.nome'), t('modelo.tecnologia'), t('modelo.tempoImpressao'),
-          'Peso total', t('modelo.probFalha'), '',
-        ]}>
-          {lista.data!.map((m) => {
+        /* grade de cards (v2): foto, nome, metadados técnicos discretos */
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          {filtrados.map((m) => {
             const pesoTotal =
               Number(m.peso_peca_g) + Number(m.peso_suporte_g) + Number(m.peso_purga_g) + Number(m.peso_desperdicio_g);
+            const un = m.tecnologia === 'resina' ? 'ml' : 'g';
             return (
-              <tr key={m.id} className="hover:bg-surface-2/50">
-                <td className="px-3 py-2.5 font-semibold text-ink">
-                  {m.nome}
-                  {m.codigo_interno && <span className="ml-1.5 text-xs font-normal text-texto-2">{m.codigo_interno}</span>}
-                </td>
-                <td className="px-3 py-2.5"><Etiqueta cor="roxo">{m.tecnologia.toUpperCase()}</Etiqueta></td>
-                <td className="px-3 py-2.5 tabular-nums">{duracao(m.tempo_impressao_min)}</td>
-                <td className="px-3 py-2.5 tabular-nums">
-                  {pesoTotal.toLocaleString()} {m.tecnologia === 'resina' ? 'ml' : 'g'}
-                </td>
-                <td className="px-3 py-2.5 tabular-nums">{(Number(m.probabilidade_falha) * 100).toFixed(0)}%</td>
-                <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                  <Botao variante="fantasma" onClick={() => navigate(`/calculadora?modelo=${m.id}`)}>
-                    {t('modelo.usarNoCalculo')}
-                  </Botao>
-                  {pode('modelos', 'editar') && (
-                    <Botao variante="fantasma" onClick={() => setEditando(m)}>{t('acoes.editar')}</Botao>
-                  )}
-                </td>
-              </tr>
+              <div key={m.id}
+                className="group flex flex-col overflow-hidden rounded-xl border border-borda bg-white transition-shadow hover:shadow-md">
+                <Link to={`/modelos/${m.id}`} className="flex aspect-[4/3] items-center justify-center bg-surface-2">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="url(#gm)" strokeWidth="1.2" className="opacity-50">
+                    <defs>
+                      <linearGradient id="gm" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stopColor="#29c2f2" /><stop offset="1" stopColor="#8a3fd1" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Zm0 2.3L18.6 8 12 11.7 5.4 8 12 4.3ZM5 9.7l6 3.4v6.6l-6-3.4V9.7Zm8 10v-6.6l6-3.4v6.6l-6 3.4Z" />
+                  </svg>
+                </Link>
+                <div className="flex flex-1 flex-col p-3">
+                  <div className="flex items-start justify-between gap-1.5">
+                    <Link to={`/modelos/${m.id}`} className="truncate text-sm font-semibold text-ink group-hover:text-brand-azul">
+                      {m.nome}
+                    </Link>
+                    <Etiqueta cor="roxo">{m.tecnologia.toUpperCase()}</Etiqueta>
+                  </div>
+                  <p className="mt-1 text-[11px] text-texto-2">
+                    {duracao(m.tempo_impressao_min)} · {pesoTotal.toLocaleString()}{un} · {(Number(m.probabilidade_falha) * 100).toFixed(0)}% falha
+                  </p>
+                  <div className="mt-auto flex items-center justify-between gap-1 pt-2">
+                    <Botao variante="fantasma" className="!px-1.5 !py-1 !text-[11px]"
+                      onClick={() => navigate(`/calculadora?modelo=${m.id}`)}>
+                      {t('modelo.usarNoCalculo')}
+                    </Botao>
+                    {pode('modelos', 'editar') && (
+                      <Botao variante="fantasma" className="!px-1.5 !py-1 !text-[11px]" onClick={() => setEditando(m)}>
+                        {t('acoes.editar')}
+                      </Botao>
+                    )}
+                  </div>
+                </div>
+              </div>
             );
           })}
-        </Tabela>
+        </div>
       )}
 
       <Modal aberto={!!editando} titulo={editando?.id ? t('acoes.editar') : t('modelo.novo')} onFechar={() => setEditando(null)} largura="max-w-xl">
