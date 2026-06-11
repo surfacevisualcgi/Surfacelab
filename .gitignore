@@ -42,3 +42,6 @@ prototipo-telas/
 
 # Testes
 coverage/
+
+# TypeScript build info
+*.tsbuildinfo
