@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calcular, entradasVazias } from './motor';
-import type { EntradasCalculo } from './tipos';
+import { calcular, entradasVazias, type EntradasCalculo } from './index';
 
 /**
  * Cenário de referência (números redondos para conferência manual):

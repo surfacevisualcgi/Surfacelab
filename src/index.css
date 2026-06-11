@@ -1,0 +1,96 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   Surface Labs — design tokens
+   Base BRANCA · detalhes/menus em PRETO · gradiente azul→roxo→rosa
+   só como ACENTO. Tipografia: Montserrat (Replica Pro fica fora da
+   web até resolver a licença Lineto).
+   ============================================================ */
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+
+  /* paleta da marca */
+  --color-brand-ciano: #29c2f2;
+  --color-brand-azul: #4b6ce0;
+  --color-brand-roxo: #8a3fd1;
+  --color-brand-magenta: #e5179a;
+  --color-ink: #0d0d0d;
+
+  /* neutros (base branca, detalhes pretos) */
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f7f8;
+  --color-borda: #e5e5e8;
+  --color-texto: #0d0d0d;
+  --color-texto-2: #6b6b70;
+
+  /* estados */
+  --color-ok: #16a34a;
+  --color-alerta: #d97706;
+  --color-erro: #dc2626;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-texto);
+    background: var(--color-surface);
+  }
+  body {
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@utility grad-acento {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-brand-ciano),
+    var(--color-brand-azul) 35%,
+    var(--color-brand-roxo) 70%,
+    var(--color-brand-magenta)
+  );
+}
+
+@utility grad-texto {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-brand-azul),
+    var(--color-brand-roxo) 60%,
+    var(--color-brand-magenta)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

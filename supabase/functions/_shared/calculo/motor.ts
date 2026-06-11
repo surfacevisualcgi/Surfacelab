@@ -14,7 +14,7 @@ import type {
   EntradasCalculo,
   ItemCusto,
   ResultadoCalculo,
-} from './tipos';
+} from './tipos.ts';
 
 export const VERSAO_MOTOR = '1.0.0';
 

@@ -1,0 +1,185 @@
+/**
+ * Telas 03/04 — Catálogo de modelos 3D (ficha técnica da peça impressa).
+ */
+import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useCrud, useLista, mensagemErro } from '@/lib/dados';
+import { duracao } from '@/lib/formato';
+import {
+  Botao, CabecalhoPagina, Campo, Carregando, Entrada, EstadoErro, EstadoVazio,
+  Etiqueta, Modal, Selecao, Tabela,
+} from '@/components/ui';
+import { useAuth } from '@/auth/AuthProvider';
+import type { Material } from '../cadastros/PaginaCadastros';
+
+export interface Modelo3D {
+  id: string;
+  nome: string;
+  codigo_interno: string | null;
+  tecnologia: 'fdm' | 'resina';
+  tempo_impressao_min: number;
+  peso_peca_g: number;
+  peso_suporte_g: number;
+  peso_purga_g: number;
+  peso_desperdicio_g: number;
+  probabilidade_falha: number;
+  material_recomendado_id: string | null;
+  impressora_recomendada_id: string | null;
+  origem: string;
+  qtd_producoes: number;
+}
+
+export function PaginaModelos() {
+  const { t } = useTranslation();
+  const { pode } = useAuth();
+  const navigate = useNavigate();
+  const lista = useLista<Modelo3D>('modelo_3d', { ordem: 'nome', desc: false });
+  const materiais = useLista<Material>('material', { ordem: 'nome', desc: false });
+  const impressoras = useLista<{ id: string; nome: string }>('impressora', { ordem: 'nome', desc: false });
+  const crud = useCrud('modelo_3d');
+  const [editando, setEditando] = useState<Partial<Modelo3D> | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function salvar(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editando) return;
+    const f = new FormData(e.currentTarget);
+    const valores = {
+      nome: f.get('nome') as string,
+      codigo_interno: (f.get('codigo_interno') as string) || null,
+      tecnologia: f.get('tecnologia') as string,
+      tempo_impressao_min: Number(f.get('tempo_impressao_min')),
+      peso_peca_g: Number(f.get('peso_peca_g')),
+      peso_suporte_g: Number(f.get('peso_suporte_g')),
+      peso_purga_g: Number(f.get('peso_purga_g')),
+      peso_desperdicio_g: Number(f.get('peso_desperdicio_g')),
+      probabilidade_falha: Number(f.get('probabilidade_falha')) / 100,
+      material_recomendado_id: (f.get('material_recomendado_id') as string) || null,
+      impressora_recomendada_id: (f.get('impressora_recomendada_id') as string) || null,
+      origem: f.get('origem') as string,
+    };
+    try {
+      if (editando.id) await crud.atualizar.mutateAsync({ id: editando.id, ...valores });
+      else await crud.criar.mutateAsync(valores);
+      setEditando(null);
+      setErro(null);
+    } catch (err) {
+      setErro(mensagemErro(err));
+    }
+  }
+
+  if (lista.isLoading) return <Carregando />;
+  if (lista.isError) return <EstadoErro onRetry={() => lista.refetch()} />;
+
+  return (
+    <div>
+      <CabecalhoPagina
+        titulo={t('modelo.titulo')}
+        acoes={pode('modelos', 'criar') ? <Botao onClick={() => setEditando({})}>+ {t('modelo.novo')}</Botao> : undefined}
+      />
+      {lista.data!.length === 0 ? (
+        <EstadoVazio acao={pode('modelos', 'criar') ? <Botao onClick={() => setEditando({})}>+ {t('modelo.novo')}</Botao> : undefined} />
+      ) : (
+        <Tabela cabecalhos={[
+          t('modelo.nome'), t('modelo.tecnologia'), t('modelo.tempoImpressao'),
+          'Peso total', t('modelo.probFalha'), '',
+        ]}>
+          {lista.data!.map((m) => {
+            const pesoTotal =
+              Number(m.peso_peca_g) + Number(m.peso_suporte_g) + Number(m.peso_purga_g) + Number(m.peso_desperdicio_g);
+            return (
+              <tr key={m.id} className="hover:bg-surface-2/50">
+                <td className="px-3 py-2.5 font-semibold text-ink">
+                  {m.nome}
+                  {m.codigo_interno && <span className="ml-1.5 text-xs font-normal text-texto-2">{m.codigo_interno}</span>}
+                </td>
+                <td className="px-3 py-2.5"><Etiqueta cor="roxo">{m.tecnologia.toUpperCase()}</Etiqueta></td>
+                <td className="px-3 py-2.5 tabular-nums">{duracao(m.tempo_impressao_min)}</td>
+                <td className="px-3 py-2.5 tabular-nums">
+                  {pesoTotal.toLocaleString()} {m.tecnologia === 'resina' ? 'ml' : 'g'}
+                </td>
+                <td className="px-3 py-2.5 tabular-nums">{(Number(m.probabilidade_falha) * 100).toFixed(0)}%</td>
+                <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                  <Botao variante="fantasma" onClick={() => navigate(`/calculadora?modelo=${m.id}`)}>
+                    {t('modelo.usarNoCalculo')}
+                  </Botao>
+                  {pode('modelos', 'editar') && (
+                    <Botao variante="fantasma" onClick={() => setEditando(m)}>{t('acoes.editar')}</Botao>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </Tabela>
+      )}
+
+      <Modal aberto={!!editando} titulo={editando?.id ? t('acoes.editar') : t('modelo.novo')} onFechar={() => setEditando(null)} largura="max-w-xl">
+        {editando && (
+          <form onSubmit={salvar} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Campo rotulo={t('modelo.nome')} className="col-span-2 sm:col-span-3">
+              <Entrada name="nome" required defaultValue={editando.nome ?? ''} />
+            </Campo>
+            <Campo rotulo="Código">
+              <Entrada name="codigo_interno" defaultValue={editando.codigo_interno ?? ''} />
+            </Campo>
+            <Campo rotulo={t('modelo.tecnologia')}>
+              <Selecao name="tecnologia" defaultValue={editando.tecnologia ?? 'fdm'}>
+                <option value="fdm">FDM</option>
+                <option value="resina">Resina</option>
+              </Selecao>
+            </Campo>
+            <Campo rotulo={t('modelo.origem')}>
+              <Selecao name="origem" defaultValue={editando.origem ?? 'proprio'}>
+                {['proprio', 'comprado', 'gratuito'].map((o) => (
+                  <option key={o} value={o}>{t(`modelo.origemLabel.${o}`)}</option>
+                ))}
+              </Selecao>
+            </Campo>
+            <Campo rotulo={t('modelo.tempoImpressao')}>
+              <Entrada name="tempo_impressao_min" type="number" min="0" required defaultValue={editando.tempo_impressao_min ?? 60} />
+            </Campo>
+            <Campo rotulo={t('modelo.probFalha')}>
+              <Entrada name="probabilidade_falha" type="number" min="0" max="100" step="0.5" defaultValue={editando.probabilidade_falha != null ? Number(editando.probabilidade_falha) * 100 : 5} />
+            </Campo>
+            <Campo rotulo={t('modelo.pesoPeca')}>
+              <Entrada name="peso_peca_g" type="number" min="0" step="any" required defaultValue={editando.peso_peca_g ?? 0} />
+            </Campo>
+            <Campo rotulo={t('modelo.pesoSuporte')}>
+              <Entrada name="peso_suporte_g" type="number" min="0" step="any" defaultValue={editando.peso_suporte_g ?? 0} />
+            </Campo>
+            <Campo rotulo={t('modelo.pesoPurga')}>
+              <Entrada name="peso_purga_g" type="number" min="0" step="any" defaultValue={editando.peso_purga_g ?? 0} />
+            </Campo>
+            <Campo rotulo={t('modelo.pesoDesperdicio')}>
+              <Entrada name="peso_desperdicio_g" type="number" min="0" step="any" defaultValue={editando.peso_desperdicio_g ?? 0} />
+            </Campo>
+            <Campo rotulo={t('modelo.materialRecomendado')} className="col-span-2">
+              <Selecao name="material_recomendado_id" defaultValue={editando.material_recomendado_id ?? ''}>
+                <option value="">—</option>
+                {(materiais.data ?? [])
+                  .filter((m) => m.tipo === 'filamento' || m.tipo === 'resina')
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>{m.nome}</option>
+                  ))}
+              </Selecao>
+            </Campo>
+            <Campo rotulo={t('modelo.impressoraRecomendada')} className="col-span-2">
+              <Selecao name="impressora_recomendada_id" defaultValue={editando.impressora_recomendada_id ?? ''}>
+                <option value="">—</option>
+                {(impressoras.data ?? []).map((i) => (
+                  <option key={i.id} value={i.id}>{i.nome}</option>
+                ))}
+              </Selecao>
+            </Campo>
+            {erro && <p className="col-span-full text-xs font-semibold text-erro">{erro}</p>}
+            <div className="col-span-full flex justify-end gap-2">
+              <Botao type="button" variante="secundario" onClick={() => setEditando(null)}>{t('acoes.cancelar')}</Botao>
+              <Botao type="submit">{t('acoes.salvar')}</Botao>
+            </div>
+          </form>
+        )}
+      </Modal>
+    </div>
+  );
+}
