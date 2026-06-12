@@ -212,6 +212,7 @@
     "semChecklist": "Adicione as etapas desta produção (preparar mesa, imprimir, lixar…)",
     "novoItemChecklist": "Nova etapa…",
     "avancarOrdem": "Avançar",
+    "moverPara": "Mover para",
     "semArquivos": "Arquivos da ordem (G-code, fotos) — em breve, junto do upload",
     "semComunicacoes": "Anotações e comunicação da equipe — em breve",
     "impactoCusto": "Impacto estimado no custo",

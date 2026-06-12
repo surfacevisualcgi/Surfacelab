@@ -47,6 +47,10 @@ export function PaginaPedidos() {
   const [colunaMobile, setColunaMobile] = useState<Coluna>('aguardando_aprovacao');
   const [falhaOp, setFalhaOp] = useState<{ id: string; numero: string } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  // drag-and-drop: id sendo arrastado + coluna sob o cursor (highlight)
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  const [colunaAlvo, setColunaAlvo] = useState<Coluna | null>(null);
+  const [menuMover, setMenuMover] = useState<string | null>(null);
 
   const pedidos = useLista<PedidoView>('v_pedido', { ordem: 'created_at', desc: true });
   const ops = useLista<OpView>('v_ordem_producao', {
@@ -54,10 +58,22 @@ export function PaginaPedidos() {
     selecao: '*, pedido:pedido_id (numero, cliente_snapshot)',
   });
 
+  /** Move com ATUALIZAÇÃO OTIMISTA: o card troca de coluna na hora; se a RPC
+   *  falhar (transição inválida, permissão), faz rollback e mostra o erro. */
   async function mover(op: OpView, status: string) {
+    if (op.status === status || op.status === 'concluido') return;
     setErro(null);
+    const snapshotAnterior = qc.getQueriesData<OpView[]>({ queryKey: ['v_ordem_producao'] });
+    qc.setQueriesData<OpView[]>({ queryKey: ['v_ordem_producao'] }, (atual) =>
+      atual?.map((o) => (o.id === op.id ? { ...o, status } : o)),
+    );
     const { error } = await supabase.rpc('mover_ordem_producao', { p_op: op.id, p_status: status });
-    if (error) setErro(mensagemErro(error));
+    if (error) {
+      for (const [chave, dados] of snapshotAnterior) qc.setQueryData(chave, dados);
+      setErro(mensagemErro(error));
+      return;
+    }
+    // sincroniza efeitos do servidor (baixa de estoque, custo real, pedido)
     qc.invalidateQueries({ queryKey: ['v_ordem_producao'] });
     qc.invalidateQueries({ queryKey: ['v_pedido'] });
     qc.invalidateQueries({ queryKey: ['material'] });
@@ -76,11 +92,23 @@ export function PaginaPedidos() {
   const cartoesDe = (coluna: Coluna) =>
     (ops.data ?? []).filter((o) => o.status === coluna);
 
-  function CartaoOp({ op }: { op: OpView }) {
+  function CartaoOp({ op, comMenuMover = false }: { op: OpView; comMenuMover?: boolean }) {
+    const podeMover = pode('producao', 'editar') && op.status !== 'concluido' && op.status !== 'cancelado';
     const idx = COLUNAS_KANBAN.indexOf(op.status as Coluna);
     const proxima = idx >= 0 && idx < COLUNAS_KANBAN.length - 1 ? COLUNAS_KANBAN[idx + 1] : null;
     return (
-      <div className="rounded-lg border border-borda bg-white p-2.5 text-xs shadow-sm">
+      <div
+        draggable={podeMover && !comMenuMover}
+        onDragStart={(e) => {
+          e.dataTransfer.setData('text/plain', op.id);
+          e.dataTransfer.effectAllowed = 'move';
+          setArrastando(op.id);
+        }}
+        onDragEnd={() => { setArrastando(null); setColunaAlvo(null); }}
+        className={`rounded-lg border border-borda bg-white p-2.5 text-xs shadow-sm transition-opacity ${
+          podeMover && !comMenuMover ? 'cursor-grab active:cursor-grabbing' : ''
+        } ${arrastando === op.id ? 'opacity-40' : ''}`}
+      >
         <div className="flex items-start justify-between gap-1">
           <Link to={`/producao/${op.id}`} className="font-bold text-ink hover:text-brand-azul">
             {op.numero}
@@ -99,13 +127,34 @@ export function PaginaPedidos() {
                 ? 'font-bold text-erro' : 'font-bold text-ok'} />
           </p>
         )}
-        {pode('producao', 'editar') && op.status !== 'concluido' && op.status !== 'cancelado' && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {proxima && (
-              <Botao variante="secundario" className="!px-2 !py-1 !text-[11px]"
-                onClick={() => mover(op, proxima)}>
-                → {t(`pedido.opStatus.${proxima}`)}
-              </Botao>
+        {podeMover && (
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            {comMenuMover ? (
+              /* mobile: mover via menu (drag em touch é ruim) */
+              <div className="relative">
+                <Botao variante="secundario" className="!px-2 !py-1 !text-[11px]"
+                  onClick={() => setMenuMover(menuMover === op.id ? null : op.id)}>
+                  {t('pedido.moverPara')} ▾
+                </Botao>
+                {menuMover === op.id && (
+                  <div className="absolute left-0 top-full z-30 mt-1 w-40 rounded-xl border border-borda bg-white p-1 shadow-lg">
+                    {COLUNAS_KANBAN.filter((c) => c !== op.status).map((c) => (
+                      <button key={c}
+                        onClick={() => { setMenuMover(null); mover(op, c); }}
+                        className="block w-full rounded-lg px-2.5 py-1.5 text-left text-[11px] font-semibold text-ink hover:bg-surface-2">
+                        → {t(`pedido.opStatus.${c}`)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              proxima && (
+                <Botao variante="secundario" className="!px-2 !py-1 !text-[11px]"
+                  onClick={() => mover(op, proxima)}>
+                  → {t(`pedido.opStatus.${proxima}`)}
+                </Botao>
+              )
             )}
             <Botao variante="fantasma" className="!px-2 !py-1 !text-[11px]"
               onClick={() => setFalhaOp({ id: op.id, numero: op.numero })}>
@@ -152,21 +201,46 @@ export function PaginaPedidos() {
                 {cartoesDe(colunaMobile).length === 0 ? (
                   <p className="py-8 text-center text-xs text-texto-2">{t('estados.vazio')}</p>
                 ) : (
-                  cartoesDe(colunaMobile).map((op) => <CartaoOp key={op.id} op={op} />)
+                  cartoesDe(colunaMobile).map((op) => <CartaoOp key={op.id} op={op} comMenuMover />)
                 )}
               </div>
             </div>
 
-            {/* desktop: kanban de 5 colunas */}
+            {/* desktop: kanban de 5 colunas com ARRASTAR-E-SOLTAR */}
             <div className="hidden gap-3 md:grid md:grid-cols-5">
               {COLUNAS_KANBAN.map((coluna) => {
                 const cartoes = cartoesDe(coluna);
                 return (
-                  <div key={coluna} className="rounded-xl bg-surface-2 p-2">
+                  <div
+                    key={coluna}
+                    onDragOver={(e) => {
+                      if (!arrastando) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      setColunaAlvo(coluna);
+                    }}
+                    onDragLeave={(e) => {
+                      if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                      setColunaAlvo((c) => (c === coluna ? null : c));
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const id = e.dataTransfer.getData('text/plain');
+                      const op = (ops.data ?? []).find((o) => o.id === id);
+                      setArrastando(null);
+                      setColunaAlvo(null);
+                      if (op) mover(op, coluna);
+                    }}
+                    className={`rounded-xl p-2 transition-colors ${
+                      colunaAlvo === coluna && arrastando
+                        ? 'bg-brand-azul/10 outline-2 outline-dashed outline-brand-azul/50'
+                        : 'bg-surface-2'
+                    }`}
+                  >
                     <p className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wide text-texto-2">
                       {t(`pedido.opStatus.${coluna}`)} <span className="text-texto-2/60">({cartoes.length})</span>
                     </p>
-                    <div className="space-y-2">
+                    <div className="min-h-16 space-y-2">
                       {cartoes.map((op) => <CartaoOp key={op.id} op={op} />)}
                     </div>
                   </div>
