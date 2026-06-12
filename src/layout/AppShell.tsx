@@ -8,6 +8,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/auth/AuthProvider';
 import { Logo } from '@/components/ui';
+import { BuscaGlobal } from './BuscaGlobal';
 import type { Modulo } from '@/auth/permissoes';
 
 interface ItemNav {
@@ -158,6 +159,9 @@ export function AppShell() {
             </button>
             <span className="lg:hidden"><Logo tamanho={22} /></span>
           </div>
+
+          {/* busca global ao centro (v2) */}
+          <BuscaGlobal />
 
           <div className="flex items-center gap-2">
             {/* seletor de empresa */}

@@ -43,6 +43,29 @@ export async function enviarFoto(
   return path;
 }
 
+/** Envia um arquivo QUALQUER (G-code, PDF…) — mesmo bucket, mesma RLS */
+export async function enviarArquivo(
+  tenantId: string,
+  prefixo: string,
+  arquivo: File,
+): Promise<string> {
+  const nomeLimpo = arquivo.name.replace(/[^\w.\-]+/g, '_');
+  const path = `${tenantId}/${prefixo}/${crypto.randomUUID().slice(0, 8)}-${nomeLimpo}`;
+  const { error } = await supabase.storage.from('fotos').upload(path, arquivo, {
+    contentType: arquivo.type || 'application/octet-stream',
+    upsert: false,
+  });
+  if (error) throw error;
+  return path;
+}
+
+/** URL assinada sob demanda (downloads fora do cache de imagem) */
+export async function urlAssinada(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('fotos').createSignedUrl(path, EXPIRACAO_S);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
 /** Remove um arquivo do Storage (ignora erro de já-removido) */
 export async function removerFoto(path: string): Promise<void> {
   await supabase.storage.from('fotos').remove([path]);

@@ -4,12 +4,13 @@
  * Checklist de produção (interativo) e Estimado × Real (divergências em
  * verde/vermelho). Ações fixas no rodapé: Registrar falha + Avançar ordem.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { mensagemErro } from '@/lib/dados';
+import { enviarArquivo, removerFoto, urlAssinada, useTenantId } from '@/lib/fotos';
 import { duracao, moeda } from '@/lib/formato';
 import {
   Abas, Botao, Carregando, Cartao, EstadoErro, EstadoVazio, Etiqueta, Entrada,
@@ -20,6 +21,7 @@ import { ModalFalha } from './ModalFalha';
 interface OpDetalhe {
   id: string; numero: string; status: string; quantidade: number;
   prazo: string | null; progresso_pct: number;
+  arquivos: string[];
   checklist: { item: string; feito: boolean; hora?: string }[];
   tempo_estimado_min: number; tempo_real_min: number | null;
   material_estimado_g: number; material_real_g: number | null;
@@ -272,7 +274,11 @@ export function PaginaOrdemProducao() {
       )}
 
       {aba === 'arquivos' && (
-        <EstadoVazio mensagem={t('pedido.semArquivos')} />
+        <ArquivosOp
+          op={o}
+          podeEditar={pode('producao', 'editar')}
+          aoMudar={() => qc.invalidateQueries({ queryKey: ['v_ordem_producao'] })}
+        />
       )}
       {aba === 'comunicacoes' && (
         <EstadoVazio mensagem={t('pedido.semComunicacoes')} />
@@ -300,5 +306,100 @@ export function PaginaOrdemProducao() {
         onSucesso={() => { setFalhaAberta(false); qc.invalidateQueries(); }}
       />
     </div>
+  );
+}
+
+/** Aba Arquivos: upload real (G-code, fotos da produção) com download assinado */
+function ArquivosOp({ op, podeEditar, aoMudar }: {
+  op: OpDetalhe;
+  podeEditar: boolean;
+  aoMudar: () => void;
+}) {
+  const { t } = useTranslation();
+  const tenantId = useTenantId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const arquivos = op.arquivos ?? [];
+
+  async function salvar(novaLista: string[]) {
+    const { error } = await supabase.from('ordem_producao')
+      .update({ arquivos: novaLista }).eq('id', op.id);
+    if (error) throw error;
+    aoMudar();
+  }
+
+  async function adicionar(lista: FileList | null) {
+    if (!lista?.length || !tenantId) return;
+    setEnviando(true);
+    setErro(null);
+    try {
+      const novos: string[] = [];
+      for (const arq of Array.from(lista)) {
+        if (arq.size > 50 * 1024 * 1024) throw new Error(t('pedido.arquivoGrande'));
+        novos.push(await enviarArquivo(tenantId, `op/${op.id}`, arq));
+      }
+      await salvar([...arquivos, ...novos]);
+    } catch (e) {
+      setErro(mensagemErro(e));
+    } finally {
+      setEnviando(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  }
+
+  async function baixar(path: string) {
+    try {
+      window.open(await urlAssinada(path), '_blank');
+    } catch (e) {
+      setErro(mensagemErro(e));
+    }
+  }
+
+  async function remover(path: string) {
+    try {
+      await salvar(arquivos.filter((a) => a !== path));
+      await removerFoto(path);
+    } catch (e) {
+      setErro(mensagemErro(e));
+    }
+  }
+
+  const nomeDe = (path: string) => path.split('/').pop()?.replace(/^[0-9a-f]{8}-/, '') ?? path;
+
+  return (
+    <Cartao className="max-w-2xl">
+      {podeEditar && (
+        <div className="mb-3 flex justify-end">
+          <Botao variante="secundario" disabled={enviando} onClick={() => inputRef.current?.click()}>
+            {enviando ? t('estados.salvando') : `+ ${t('pedido.adicionarArquivo')}`}
+          </Botao>
+          <input ref={inputRef} type="file" multiple className="hidden"
+            onChange={(e) => adicionar(e.target.files)} />
+        </div>
+      )}
+      {erro && <p className="mb-2 text-xs font-semibold text-erro">{erro}</p>}
+      {arquivos.length === 0 ? (
+        <EstadoVazio mensagem={t('pedido.semArquivos')} />
+      ) : (
+        <ul className="divide-y divide-borda/70">
+          {arquivos.map((path) => (
+            <li key={path} className="flex items-center justify-between gap-2 py-2 text-sm">
+              <span className="min-w-0 truncate font-semibold text-ink">📄 {nomeDe(path)}</span>
+              <span className="flex shrink-0 gap-1">
+                <Botao variante="fantasma" className="!px-2 !py-1 !text-[11px]" onClick={() => baixar(path)}>
+                  ⤓ {t('pedido.baixar')}
+                </Botao>
+                {podeEditar && (
+                  <Botao variante="fantasma" className="!px-2 !py-1 !text-[11px]" onClick={() => remover(path)}>
+                    ✕
+                  </Botao>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Cartao>
   );
 }

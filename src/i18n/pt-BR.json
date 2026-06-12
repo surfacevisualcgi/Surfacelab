@@ -214,7 +214,10 @@
     "novoItemChecklist": "Nova etapa…",
     "avancarOrdem": "Avançar",
     "moverPara": "Mover para",
-    "semArquivos": "Arquivos da ordem (G-code, fotos) — em breve, junto do upload",
+    "semArquivos": "Nenhum arquivo — anexe o G-code, fotos da produção ou instruções",
+    "adicionarArquivo": "Anexar arquivo",
+    "baixar": "Baixar",
+    "arquivoGrande": "Arquivo acima de 50 MB",
     "semComunicacoes": "Anotações e comunicação da equipe — em breve",
     "impactoCusto": "Impacto estimado no custo",
     "impactoCustoDica": "Desperdício × custo médio do material. Entra no custo real da OP.",
@@ -539,6 +542,9 @@
     "passoModelo": "Crie a ficha de um modelo 3D",
     "passoProduto": "Monte um produto com composição",
     "passoCalculo": "Calcule o preço e gere um orçamento"
+  },
+  "busca": {
+    "placeholder": "Buscar produtos, modelos, clientes, orçamentos…"
   },
   "fiscal": {
     "titulo": "Fiscal e Financeiro",
