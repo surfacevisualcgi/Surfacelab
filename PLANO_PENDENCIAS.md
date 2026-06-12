@@ -57,13 +57,16 @@
 
 ### P5 — polimento das telas existentes
 - [ ] Detalhamento de custos (08): tabela **custo → preço → margem** comparando os 3 cenários lado a lado
-- [ ] Orçamento (09): **anexos** (UI) + editar cabeçalho (validade/prazo/condições/observações) em rascunho
+- [x] Orçamento (09): editar cabeçalho **e itens** em rascunho (com recálculo no servidor) + **ações de status** (enviar/aguardando/recusar/expirar) na lista e no detalhe + **Novo orçamento manual em stepper**. *(falta só anexos na UI)*
 - [ ] Kanban (10): cards com **foto / responsável / tempo restante** + **rodapé de 4 métricas**; (opcional) separar "Pedidos" e "Produção" como itens de menu
 - [ ] OP (11): aba **Comunicações** (precisa modelo de comentários no banco)
 - [ ] Fiscal (13): **impostos por tipo** (ISS/ICMS), **calendário de obrigações**, **checklist de conformidade** (elétrico/infantil/alimento)
-- [ ] Financeiro (19): KPI **saldo**, coluna **conta**, card **próximos pagamentos**, **conciliação**
+- [x] Financeiro (19): KPI **saldo em caixa**, coluna+filtro **conta**, card **próximos pagamentos**, **pagamento parcial** (baixa controlada). *(conciliação bancária por importação fica para depois)*
 - [ ] Cadastros (17): cartões dedicados **Categorias**, **Embalagens**, **Backup & exportação**, **Usuários & permissões**
 - [ ] Impressoras (18): **foto** + **barra de uso/horas** na tabela
+
+### ✅ Página do Pedido (/pedidos/:id) — NOVO (não estava no plano)
+- [x] Tela do pedido como objeto de negócio: itens, cliente, origem, **OPs vinculadas**, resumo interno (custo/lucro/margem), total, **entrega** (marcar entregue) e **recebimentos** (registrar do próprio pedido). Lista, kanban e OP agora linkam para o pedido. Fecha o maior buraco de controle do dia a dia.
 
 ---
 
