@@ -3,6 +3,7 @@
  * custos fixos, mão de obra, energia. (Estrutura do protótipo, pele Surface.)
  */
 import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
@@ -24,6 +25,7 @@ type Aba = 'impressoras' | 'materiais' | 'canais' | 'custosFixos' | 'maoDeObra' 
 export function PaginaCadastros() {
   const { t } = useTranslation();
   const { ativa } = useAuth();
+  const navigate = useNavigate();
   const [secao, setSecao] = useState<Aba | null>(null);
 
   const contagens = useQuery({
@@ -88,7 +90,8 @@ export function PaginaCadastros() {
               </h2>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {cartoes.filter((card) => card.grupo === g.id).map((card) => (
-                  <button key={card.id} onClick={() => setSecao(card.id)}
+                  <button key={card.id}
+                    onClick={() => card.id === 'impressoras' ? navigate('/impressoras') : setSecao(card.id)}
                     className="flex items-start gap-3 rounded-xl border border-borda bg-white p-3.5 text-left transition-colors hover:border-brand-azul hover:bg-brand-azul/5">
                     <span className="text-xl" aria-hidden>{card.icone}</span>
                     <span className="min-w-0">

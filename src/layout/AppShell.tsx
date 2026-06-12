@@ -58,6 +58,8 @@ export function AppShell() {
     { para: '/clientes', rotulo: t('nav.clientes'), modulo: 'clientes', icone: ICONES.pessoas },
     { para: '/fornecedores', rotulo: t('nav.fornecedores'), modulo: 'fornecedores', icone: ICONES.caminhao },
     { para: '/financeiro', rotulo: t('nav.financeiro'), modulo: 'financeiro', icone: ICONES.cifrao },
+    { para: '/fiscal', rotulo: t('nav.fiscal'), modulo: 'fiscal', icone: ICONES.doc },
+    { para: '/impressoras', rotulo: t('nav.impressoras'), modulo: 'configuracoes', icone: ICONES.estoque },
     { para: '/cadastros', rotulo: t('nav.cadastros'), modulo: 'configuracoes', icone: ICONES.lista },
     { para: '/configuracoes', rotulo: t('nav.configuracoes'), modulo: 'configuracoes', icone: ICONES.engren },
   ];

@@ -15,7 +15,7 @@ import {
 import { useAuth } from '@/auth/AuthProvider';
 import type { Papel } from '@/auth/permissoes';
 
-type Aba = 'operacional' | 'fiscal' | 'equipe' | 'plano';
+type Aba = 'operacional' | 'equipe' | 'plano';
 
 export function PaginaConfiguracoes() {
   const { t } = useTranslation();
@@ -23,9 +23,9 @@ export function PaginaConfiguracoes() {
   const [aba, setAba] = useState<Aba>('operacional');
   if (!pode('configuracoes')) return <EstadoVazio />;
 
+  // fiscal ganhou tela própria (/fiscal), como no v2
   const abas: { id: Aba; rotulo: string }[] = [
     { id: 'operacional', rotulo: t('config.operacional') },
-    { id: 'fiscal', rotulo: t('config.fiscal') },
     { id: 'equipe', rotulo: t('config.equipe') },
     { id: 'plano', rotulo: t('config.plano') },
   ];
@@ -42,7 +42,6 @@ export function PaginaConfiguracoes() {
         ))}
       </div>
       {aba === 'operacional' && <AbaOperacional />}
-      {aba === 'fiscal' && <AbaFiscal />}
       {aba === 'equipe' && <AbaEquipe />}
       {aba === 'plano' && <AbaPlano />}
     </div>
@@ -107,7 +106,7 @@ function AbaOperacional() {
   );
 }
 
-function AbaFiscal() {
+export function AbaFiscal() {
   const { t } = useTranslation();
   const lista = useLista<{ id: string; nome: string; tipo: string; aliquota_efetiva: number; padrao: boolean }>('perfil_fiscal', { ordem: 'nome', desc: false });
   const crud = useCrud('perfil_fiscal');

@@ -17,6 +17,8 @@ import { PaginaEstoque } from './features/estoque/PaginaEstoque';
 import { PaginaClientes } from './features/clientes/PaginaClientes';
 import { PaginaFornecedores } from './features/fornecedores/PaginaFornecedores';
 import { PaginaFinanceiro } from './features/financeiro/PaginaFinanceiro';
+import { PaginaFiscal } from './features/fiscal/PaginaFiscal';
+import { PaginaImpressoras } from './features/impressoras/PaginaImpressoras';
 import { PaginaCadastros } from './features/cadastros/PaginaCadastros';
 import { PaginaConfiguracoes } from './features/configuracoes/PaginaConfiguracoes';
 import { PaginaConta } from './features/conta/PaginaConta';
@@ -63,6 +65,8 @@ export default function App() {
             <Route path="/clientes" element={<PaginaClientes />} />
             <Route path="/fornecedores" element={<PaginaFornecedores />} />
             <Route path="/financeiro" element={<PaginaFinanceiro />} />
+            <Route path="/fiscal" element={<PaginaFiscal />} />
+            <Route path="/impressoras" element={<PaginaImpressoras />} />
             <Route path="/cadastros" element={<PaginaCadastros />} />
             <Route path="/configuracoes" element={<PaginaConfiguracoes />} />
             <Route path="/conta" element={<PaginaConta />} />
