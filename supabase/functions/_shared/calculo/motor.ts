@@ -350,9 +350,19 @@ export function calcular(e: EntradasCalculo): ResultadoCalculo {
   const precoUnitario = e.qtdVendavel > 0 ? r(precoFinal / e.qtdVendavel) : 0;
   const precoMinimoUnitario = e.qtdVendavel > 0 ? r(precoMinimo / e.qtdVendavel) : 0;
 
+  // preço de atacado: desconto comercial sobre o varejo (default 10%)
+  const descontoAtacado = e.descontoAtacado ?? 0.1;
+  const precoAtacado = r(precoFinal * (1 - descontoAtacado));
+  const precoAtacadoUnitario = e.qtdVendavel > 0 ? r(precoAtacado / e.qtdVendavel) : 0;
+
   if (precoFinal > 0 && precoFinal < precoMinimo) {
     alertas.push(
       `Preço final (R$ ${reais(precoFinal)}) abaixo do preço mínimo recomendado (R$ ${reais(precoMinimo)}) — desconto excessivo.`,
+    );
+  }
+  if (precoAtacado > 0 && precoAtacado < precoMinimo) {
+    alertas.push(
+      `Preço de atacado (R$ ${reais(precoAtacado)}, ${pct(descontoAtacado)} abaixo do varejo) fura o preço mínimo (R$ ${reais(precoMinimo)}) — venda no atacado só acima dessa quantidade de margem.`,
     );
   }
 
@@ -368,6 +378,8 @@ export function calcular(e: EntradasCalculo): ResultadoCalculo {
     precoAntesTaxas,
     precoFinal,
     precoUnitario,
+    precoAtacado,
+    precoAtacadoUnitario,
     precoMinimo,
     precoMinimoUnitario,
     valorTaxas,
@@ -396,6 +408,7 @@ export function entradasVazias(): EntradasCalculo {
     provisao: 0.03,
     margemDesejada: 0.35,
     margemMinima: 0.1,
+    descontoAtacado: 0.1,
     taxas: { canal: 0, pagamento: 0, comissao: 0, aliquota: 0 },
   };
 }

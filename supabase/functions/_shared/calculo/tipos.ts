@@ -108,6 +108,8 @@ export interface EntradasCalculo {
   margemDesejada: Fracao;
   /** margem mínima aceitável — define o preço-piso */
   margemMinima?: Fracao;
+  /** desconto do preço de atacado sobre o varejo (fração; default 0.10) */
+  descontoAtacado?: Fracao;
   taxas: Taxas;
   /** desconto comercial aplicado ao preço final do lote */
   desconto?: Centavos;
@@ -138,9 +140,12 @@ export interface ResultadoCalculo {
   custoUnitario: Centavos;
 
   precoAntesTaxas: Centavos;
-  /** preço final do lote (após taxas/impostos/rateio % e desconto) */
+  /** preço final do lote (após taxas/impostos/rateio % e desconto) — VAREJO */
   precoFinal: Centavos;
   precoUnitario: Centavos;
+  /** preço de ATACADO: varejo × (1 − descontoAtacado) */
+  precoAtacado: Centavos;
+  precoAtacadoUnitario: Centavos;
   /** piso: nunca vender abaixo disso */
   precoMinimo: Centavos;
   precoMinimoUnitario: Centavos;

@@ -59,6 +59,7 @@ export function PaginaCalculadora() {
   const [margem, setMargem] = useState<number | null>(null); // null = do cenário
   const [probFalha, setProbFalha] = useState<number | null>(null);
   const [provisao, setProvisao] = useState<number | null>(null);
+  const [descAtacado, setDescAtacado] = useState<number | null>(null);
   const [avancado, setAvancado] = useState(false);
   const [aberto, setAberto] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -141,6 +142,7 @@ export function PaginaCalculadora() {
     e.margemDesejada = margem ?? cenario.margem;
     e.probabilidadeFalha = probFalha ?? (e.probabilidadeFalha || cenario.probabilidade_falha);
     e.provisao = provisao ?? cenario.provisao;
+    e.descontoAtacado = descAtacado ?? 0.1;
 
     // taxas do canal + alíquota do perfil fiscal padrão
     const canal = (canais.data ?? []).find((c) => c.id === canalId);
@@ -306,6 +308,11 @@ export function PaginaCalculadora() {
                     value={((provisao ?? cenario.provisao) * 100).toFixed(1)}
                     onChange={(e) => setProvisao(Number(e.target.value) / 100)} />
                 </Campo>
+                <Campo rotulo={t('calculadora.descontoAtacado')}>
+                  <Entrada type="number" min="0" max="90" step="1"
+                    value={Math.round((descAtacado ?? 0.1) * 100)}
+                    onChange={(e) => setDescAtacado(Number(e.target.value) / 100)} />
+                </Campo>
                 <Campo rotulo={t('calculadora.aliquota')}>
                   <Entrada disabled value={percentual(entradas.taxas.aliquota, formato)} />
                 </Campo>
@@ -402,6 +409,21 @@ export function PaginaCalculadora() {
                 {t('calculadora.precoUnitario')}: <Dinheiro centavos={temItens ? resultado.precoUnitario : 0} className="font-bold text-ink" />
               </p>
             </div>
+            {/* 2º herói: preço de atacado (v2) */}
+            <div className="col-span-2 rounded-xl border border-brand-roxo/40 bg-brand-roxo/5 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-brand-roxo">
+                {t('calculadora.precoAtacado')}
+                <span className="ml-1 font-semibold normal-case text-texto-2">
+                  (−{Math.round((entradas.descontoAtacado ?? 0.1) * 100)}%)
+                </span>
+              </p>
+              <p className="text-lg font-extrabold tabular-nums text-ink">
+                <Dinheiro centavos={temItens ? resultado.precoAtacado : 0} />
+              </p>
+              <p className="text-[11px] text-texto-2">
+                {t('calculadora.precoUnitario')}: <Dinheiro centavos={temItens ? resultado.precoAtacadoUnitario : 0} className="font-bold text-ink" />
+              </p>
+            </div>
             {flag('ver_custos') && (
               <>
                 <div className="rounded-xl border border-borda bg-white p-3">
@@ -469,8 +491,8 @@ export function PaginaCalculadora() {
             <ResultadoMini rotulo={t('calculadora.preco')} destaque>
               <Dinheiro centavos={resultado.precoFinal} />
             </ResultadoMini>
-            <ResultadoMini rotulo={t('calculadora.unitario')}>
-              <Dinheiro centavos={resultado.precoUnitario} />
+            <ResultadoMini rotulo={t('calculadora.atacadoCurto')}>
+              <Dinheiro centavos={resultado.precoAtacado} />
             </ResultadoMini>
             {flag('ver_custos') ? (
               <>

@@ -102,6 +102,28 @@ describe('motor de cálculo — do custo ao preço (§5.2)', () => {
     expect(r.margem).toBeCloseTo(r.lucro / 60402, 10);
   });
 
+  it('preço de atacado = varejo × (1 − desconto), default 10%', () => {
+    const r = calcular(cenarioReferencia());
+    expect(r.precoAtacado).toBe(Math.round(60402 * 0.9)); // 54362
+    expect(r.precoAtacadoUnitario).toBe(Math.round(r.precoAtacado / 9));
+  });
+
+  it('desconto de atacado é configurável', () => {
+    const e = cenarioReferencia();
+    e.descontoAtacado = 0.2;
+    const r = calcular(e);
+    expect(r.precoAtacado).toBe(Math.round(60402 * 0.8));
+  });
+
+  it('alerta quando o atacado fura o preço mínimo', () => {
+    const e = cenarioReferencia();
+    // margem desejada baixa: varejo perto do piso → atacado fura
+    e.margemDesejada = 0.12;
+    const r = calcular(e);
+    expect(r.precoAtacado).toBeLessThan(r.precoMinimo);
+    expect(r.alertas.some((a) => a.includes('atacado'))).toBe(true);
+  });
+
   it('preço mínimo usa a margem mínima como piso', () => {
     const r = calcular(cenarioReferencia());
     expect(r.precoMinimo).toBe(Math.round(33372 / 0.9 / 0.85));
@@ -186,6 +208,7 @@ describe('motor de cálculo — resina e casos de borda', () => {
     for (const v of [
       r.subtotalDireto, r.custoFalhas, r.provisaoGarantia, r.custoTotal,
       r.custoUnitario, r.precoAntesTaxas, r.precoFinal, r.precoUnitario,
+      r.precoAtacado, r.precoAtacadoUnitario,
       r.precoMinimo, r.valorTaxas, r.rateioCustoFixoValor, r.lucro, r.lucroBruto,
     ]) {
       expect(Number.isInteger(v)).toBe(true);
