@@ -163,7 +163,14 @@
     "snapshotAviso": "Valores congelados no momento da geração — mudanças nos cadastros não afetam este orçamento.",
     "aprovarGerarPedido": "Aprovar → gerar pedido",
     "marcarEnviado": "Marcar como enviado",
+    "marcarAguardando": "Aguardando resposta",
+    "marcarExpirado": "Marcar expirado",
     "recusar": "Recusar",
+    "editar": "Editar orçamento",
+    "novoManual": "Novo orçamento",
+    "novoPelaCalculadora": "Montar na calculadora",
+    "aprovar": "Aprovar",
+    "enviar": "Enviar",
     "statusLabel": {
       "rascunho": "Rascunho",
       "enviado": "Enviado",
@@ -733,6 +740,18 @@
     "semNome": "Dê um nome ao produto"
   },
   "editarProduto": { "titulo": "Editar produto", "informacoes": "Informações do produto" },
+  "novoOrc": {
+    "titulo": "Novo orçamento",
+    "passoDetalhes": "Detalhes",
+    "criar": "Criar orçamento"
+  },
+  "editarOrc": {
+    "titulo": "Editar orçamento (rascunho)",
+    "itens": "Itens",
+    "addItem": "Adicionar item",
+    "cabecalho": "Cabeçalho",
+    "salvarRecalcular": "Salvar e recalcular"
+  },
   "novoPedido": {
     "titulo": "Novo pedido",
     "passoCliente": "Cliente",

@@ -4,14 +4,17 @@
  */
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useLista } from '@/lib/dados';
+import { supabase } from '@/lib/supabase';
+import { useLista, mensagemErro } from '@/lib/dados';
 import { dataCurta, percentual } from '@/lib/formato';
 import {
   Botao, CabecalhoPagina, Carregando, Dinheiro, EstadoErro, EstadoVazio,
   Etiqueta, Kpi, Selecao, TabelaDados,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
+import { ModalNovoOrcamento } from './ModalNovoOrcamento';
 
 export interface OrcamentoView {
   id: string;
@@ -39,10 +42,31 @@ export const COR_STATUS_ORC: Record<string, 'cinza' | 'azul' | 'amarelo' | 'verd
 
 export function PaginaOrcamentos() {
   const { t } = useTranslation();
-  const { formato } = useAuth();
+  const { formato, pode } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const lista = useLista<OrcamentoView>('v_orcamento', { ordem: 'created_at', desc: true });
   const [filtroStatus, setFiltroStatus] = useState('');
+  const [novo, setNovo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [agindo, setAgindo] = useState<string | null>(null);
+
+  async function mudarStatus(o: OrcamentoView, status: string) {
+    setAgindo(o.id); setErro(null);
+    const patch: Record<string, unknown> = { status };
+    if (status === 'enviado') patch.enviado_em = new Date().toISOString();
+    const { error } = await supabase.from('orcamento').update(patch).eq('id', o.id);
+    setAgindo(null);
+    if (error) setErro(mensagemErro(error));
+    else qc.invalidateQueries({ queryKey: ['v_orcamento'] });
+  }
+  async function aprovar(o: OrcamentoView) {
+    setAgindo(o.id); setErro(null);
+    const { data, error } = await supabase.rpc('aprovar_orcamento', { p_orcamento: o.id });
+    setAgindo(null);
+    if (error) setErro(mensagemErro(error));
+    else { qc.invalidateQueries(); navigate('/pedidos', { state: { pedido: data } }); }
+  }
 
   const kpis = useMemo(() => {
     const todos = lista.data ?? [];
@@ -66,7 +90,12 @@ export function PaginaOrcamentos() {
     <div>
       <CabecalhoPagina
         titulo={t('orcamento.titulo')}
-        acoes={<Botao variante="acento" onClick={() => navigate('/calculadora')}>+ {t('orcamento.novo')}</Botao>}
+        acoes={pode('orcamentos', 'criar') ? (
+          <div className="flex items-center gap-2">
+            <Botao variante="secundario" onClick={() => navigate('/calculadora')}>{t('orcamento.novoPelaCalculadora')}</Botao>
+            <Botao variante="acento" onClick={() => setNovo(true)}>+ {t('orcamento.novoManual')}</Botao>
+          </div>
+        ) : undefined}
       />
 
       {/* 4 KPIs — taxa de conversão como herói (v2) */}
@@ -88,8 +117,10 @@ export function PaginaOrcamentos() {
         </Selecao>
       </div>
 
+      {erro && <p className="mb-3 text-xs font-semibold text-erro">{erro}</p>}
+
       {filtrados.length === 0 ? (
-        <EstadoVazio acao={!filtroStatus ? <Botao variante="acento" onClick={() => navigate('/calculadora')}>+ {t('orcamento.novo')}</Botao> : undefined} />
+        <EstadoVazio acao={!filtroStatus && pode('orcamentos', 'criar') ? <Botao variante="acento" onClick={() => setNovo(true)}>+ {t('orcamento.novoManual')}</Botao> : undefined} />
       ) : (
         <TabelaDados<OrcamentoView>
           colunas={[
@@ -126,8 +157,42 @@ export function PaginaOrcamentos() {
           ]}
           linhas={filtrados}
           chave={(o) => o.id}
+          acoes={(o) => {
+            if (!pode('orcamentos', 'editar')) return null;
+            const ocupado = agindo === o.id;
+            const vencido = o.validade && o.validade < hoje;
+            return (
+              <div className="flex flex-wrap justify-end gap-1">
+                {o.status === 'rascunho' && (
+                  <Botao variante="secundario" className="!px-2 !py-1 !text-[11px]" disabled={ocupado} onClick={() => mudarStatus(o, 'enviado')}>
+                    {t('orcamento.enviar')}
+                  </Botao>
+                )}
+                {['enviado', 'aguardando_resposta'].includes(o.status) && (
+                  <>
+                    {vencido ? (
+                      <Botao variante="secundario" className="!px-2 !py-1 !text-[11px]" disabled={ocupado} onClick={() => mudarStatus(o, 'expirado')}>
+                        {t('orcamento.marcarExpirado')}
+                      </Botao>
+                    ) : (
+                      <Botao variante="fantasma" className="!px-2 !py-1 !text-[11px]" disabled={ocupado} onClick={() => mudarStatus(o, 'recusado')}>
+                        {t('orcamento.recusar')}
+                      </Botao>
+                    )}
+                  </>
+                )}
+                {['rascunho', 'enviado', 'aguardando_resposta'].includes(o.status) && pode('orcamentos', 'aprovar') && (
+                  <Botao variante="acento" className="!px-2 !py-1 !text-[11px]" disabled={ocupado} onClick={() => aprovar(o)}>
+                    {t('orcamento.aprovar')}
+                  </Botao>
+                )}
+              </div>
+            );
+          }}
         />
       )}
+
+      <ModalNovoOrcamento aberto={novo} onFechar={() => setNovo(false)} />
     </div>
   );
 }

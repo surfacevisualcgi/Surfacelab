@@ -16,6 +16,7 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 import { COR_STATUS_ORC, type OrcamentoView } from './PaginaOrcamentos';
+import { ModalEditarOrcamento } from './ModalEditarOrcamento';
 import type { ResultadoCalculo } from '@/core/calculo';
 
 interface ItemView {
@@ -44,6 +45,7 @@ export function PaginaOrcamentoDetalhe() {
   const qc = useQueryClient();
   const [erro, setErro] = useState<string | null>(null);
   const [agindo, setAgindo] = useState(false);
+  const [editando, setEditando] = useState(false);
 
   const orc = useQuery({
     queryKey: ['v_orcamento', id],
@@ -120,6 +122,8 @@ export function PaginaOrcamentoDetalhe() {
   const snapshot = (flag('ver_custos') ? o.calculo_snapshot : null) as ResultadoCalculo | null;
   const empresa = o.empresa_snapshot ?? {};
   const podeAgir = ['rascunho', 'enviado', 'aguardando_resposta'].includes(o.status);
+  const hoje = new Date().toISOString().slice(0, 10);
+  const vencido = !!o.validade && o.validade < hoje;
 
   return (
     <div className="pb-20 lg:pb-0">
@@ -253,8 +257,23 @@ export function PaginaOrcamentoDetalhe() {
               💬 {t('orcamento.enviarWhatsApp')}
             </Botao>
             {o.status === 'rascunho' && pode('orcamentos', 'editar') && (
-              <Botao variante="secundario" disabled={agindo} onClick={() => mudarStatus('enviado')}>
-                {t('orcamento.marcarEnviado')}
+              <>
+                <Botao variante="secundario" disabled={agindo} onClick={() => setEditando(true)}>
+                  ✎ {t('orcamento.editar')}
+                </Botao>
+                <Botao variante="secundario" disabled={agindo} onClick={() => mudarStatus('enviado')}>
+                  {t('orcamento.marcarEnviado')}
+                </Botao>
+              </>
+            )}
+            {o.status === 'enviado' && pode('orcamentos', 'editar') && (
+              <Botao variante="secundario" disabled={agindo} onClick={() => mudarStatus('aguardando_resposta')}>
+                {t('orcamento.marcarAguardando')}
+              </Botao>
+            )}
+            {['enviado', 'aguardando_resposta'].includes(o.status) && vencido && pode('orcamentos', 'editar') && (
+              <Botao variante="secundario" disabled={agindo} onClick={() => mudarStatus('expirado')}>
+                {t('orcamento.marcarExpirado')}
               </Botao>
             )}
             {podeAgir && pode('orcamentos', 'aprovar') && (
@@ -270,6 +289,15 @@ export function PaginaOrcamentoDetalhe() {
           </div>
         </div>
       </div>
+
+      {id && (
+        <ModalEditarOrcamento
+          orcamentoId={id}
+          aberto={editando}
+          onFechar={() => setEditando(false)}
+          onSalvo={() => { setEditando(false); orc.refetch(); itens.refetch(); }}
+        />
+      )}
     </div>
   );
 }
