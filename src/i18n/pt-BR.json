@@ -232,6 +232,27 @@
       "montagem": "Montagem"
     }
   },
+  "pedidoDet": {
+    "titulo": "Pedido",
+    "abrir": "Abrir pedido",
+    "semCliente": "Sem cliente (balcão)",
+    "origem": "Origem",
+    "deOrcamento": "Veio de orçamento",
+    "vendaDireta": "Venda direta",
+    "producao": "Ordens de produção",
+    "semOps": "Sem ordens de produção (itens avulsos não geram produção)",
+    "entrega": "Entrega",
+    "statusEntrega": "Situação",
+    "entregue": "Entregue",
+    "pendente": "Pendente",
+    "marcarEntregue": "Marcar como entregue",
+    "recebimentos": "Recebimentos",
+    "verFinanceiro": "Ver no financeiro",
+    "semRecebimentos": "Nenhum recebimento lançado",
+    "registrarRecebimento": "Registrar",
+    "recebido": "Recebido",
+    "confirmaCancelar": "Cancelar este pedido? As ordens em aberto serão canceladas e as reservas de estoque estornadas."
+  },
   "estoque": {
     "titulo": "Estoque & Compras",
     "materiais": "Materiais",

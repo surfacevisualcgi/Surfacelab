@@ -118,7 +118,11 @@ export function PaginaPedidos() {
           <span className="text-[10px] text-texto-2">{Number(op.quantidade)}×</span>
         </div>
         <p className="mt-0.5 truncate text-texto-2">
-          {op.pedido?.cliente_snapshot?.nome ?? op.pedido?.numero ?? '—'} · {duracao(op.tempo_estimado_min)}
+          {op.pedido_id ? (
+            <Link to={`/pedidos/${op.pedido_id}`} className="hover:text-brand-azul hover:underline" onClick={(e) => e.stopPropagation()}>
+              {op.pedido?.cliente_snapshot?.nome ?? op.pedido?.numero ?? '—'}
+            </Link>
+          ) : (op.pedido?.cliente_snapshot?.nome ?? '—')} · {duracao(op.tempo_estimado_min)}
         </p>
         <BarraProgresso pct={Number(op.progresso_pct)} className="mt-2" />
         {op.status === 'concluido' && flag('ver_custos') && op.custo_real != null && (
@@ -264,7 +268,7 @@ export function PaginaPedidos() {
         ) : (
           <TabelaDados<PedidoView>
             colunas={[
-              { titulo: t('pedido.numero'), principal: true, render: (p) => <span className="font-bold text-ink">{p.numero}</span> },
+              { titulo: t('pedido.numero'), principal: true, render: (p) => <Link to={`/pedidos/${p.id}`} className="font-bold text-ink hover:text-brand-azul">{p.numero}</Link> },
               { titulo: t('pedido.cliente'), render: (p) => p.cliente_snapshot?.nome ?? '—' },
               { titulo: t('pedido.total'), numerica: true, render: (p) => <span className="font-semibold"><Dinheiro centavos={p.total} /></span> },
               {

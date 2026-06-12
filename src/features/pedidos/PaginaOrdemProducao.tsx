@@ -5,7 +5,7 @@
  * verde/vermelho). Ações fixas no rodapé: Registrar falha + Avançar ordem.
  */
 import { useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
@@ -29,6 +29,7 @@ interface OpDetalhe {
   iniciado_em: string | null; concluido_em: string | null;
   config_impressao_snapshot: { nome?: string; tecnologia?: string; versao?: string }[];
   produto_id: string | null;
+  pedido_id: string | null;
   impressora_id: string | null;
   produto: { nome: string } | null;
   pedido: { numero: string; cliente_snapshot: { nome?: string } | null } | null;
@@ -126,6 +127,11 @@ export function PaginaOrdemProducao() {
 
   return (
     <div className="pb-20 lg:pb-0">
+      {o.pedido_id && (
+        <Link to={`/pedidos/${o.pedido_id}`} className="mb-2 inline-block text-xs font-bold text-brand-azul hover:underline">
+          ← {t('pedidoDet.titulo')} {o.pedido?.numero ?? ''}
+        </Link>
+      )}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <h1 className="text-xl font-extrabold tracking-tight text-ink">
