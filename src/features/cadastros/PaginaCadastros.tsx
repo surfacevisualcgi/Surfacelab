@@ -334,6 +334,7 @@ interface Impressora {
   id: string; nome: string; tecnologia: string; fabricante: string | null;
   valor_aquisicao: number; vida_util_horas: number; consumo_w: number;
   manutencao_hora: number; perfil_energia_id: string | null; status: string;
+  agente_id: string | null;
 }
 
 function custoHoraImpressora(i: Impressora): number {
@@ -345,6 +346,7 @@ export function AbaImpressoras() {
   const { t } = useTranslation();
   const { pode, formato } = useAuth();
   const lista = useLista<Impressora>('impressora', { ordem: 'nome', desc: false });
+  const agentes = useLista<{ id: string; nome: string }>('agente_impressao', { ordem: 'nome', desc: false });
   const crud = useCrud('impressora');
   const [editando, setEditando] = useState<Partial<Impressora> | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -374,6 +376,7 @@ export function AbaImpressoras() {
       vida_util_horas: Number(f.get('vida_util_horas')),
       consumo_w: Number(f.get('consumo_w')),
       manutencao_hora: paraCentavos(f.get('manutencao_hora') as string),
+      agente_id: (f.get('agente_id') as string) || null,
     };
     try {
       if (editando.id) await crud.atualizar.mutateAsync({ id: editando.id, ...valores });
@@ -447,6 +450,14 @@ export function AbaImpressoras() {
             <Campo rotulo={t('cadastros.impressora.manutencaoHora')}>
               <Entrada name="manutencao_hora" inputMode="decimal" defaultValue={deCentavos(editando.manutencao_hora ?? 0)}
                 onChange={(e) => setVivoImp({ ...vivoImp, manutencao: e.target.value })} />
+            </Campo>
+            {/* vínculo com o agente de impressão (impressão remota) */}
+            <Campo rotulo={t('agente.aba')} className="col-span-2"
+              dica={(agentes.data ?? []).length === 0 ? t('impressao.semAgente') : undefined}>
+              <Selecao name="agente_id" defaultValue={editando.agente_id ?? ''}>
+                <option value="">— {t('agente.offline')}</option>
+                {(agentes.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+              </Selecao>
             </Campo>
             {/* o número que importa: custo por hora, calculado ao vivo (v2) */}
             <div className="col-span-2 rounded-xl border border-brand-roxo/30 bg-brand-roxo/5 p-3">

@@ -13,7 +13,7 @@ import { mensagemErro } from '@/lib/dados';
 import { enviarArquivo, removerFoto, urlAssinada, useTenantId } from '@/lib/fotos';
 import { duracao, moeda } from '@/lib/formato';
 import {
-  Abas, Botao, Carregando, Cartao, EstadoErro, EstadoVazio, Etiqueta, Entrada,
+  Abas, Botao, Carregando, Cartao, EstadoErro, EstadoVazio, Etiqueta, Entrada, Modal,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 import { ModalFalha } from './ModalFalha';
@@ -28,6 +28,8 @@ interface OpDetalhe {
   custo_estimado: number | null; custo_real: number | null;
   iniciado_em: string | null; concluido_em: string | null;
   config_impressao_snapshot: { nome?: string; tecnologia?: string; versao?: string }[];
+  produto_id: string | null;
+  impressora_id: string | null;
   produto: { nome: string } | null;
   pedido: { numero: string; cliente_snapshot: { nome?: string } | null } | null;
 }
@@ -291,11 +293,17 @@ export function PaginaOrdemProducao() {
             <Botao variante="secundario" onClick={() => setFalhaAberta(true)}>
               ⚠ {t('pedido.registrarFalha')}
             </Botao>
-            {proxima && (
-              <Botao variante="acento" onClick={avancar}>
-                {t('pedido.avancarOrdem')} → {t(`pedido.opStatus.${proxima}`)}
-              </Botao>
-            )}
+            <div className="flex gap-2">
+              {/* imprimir direto: envia o G-code do modelo à impressora e avança */}
+              {(o.status === 'preparar' || o.status === 'aguardando_aprovacao') && (
+                <BotaoImprimirOP op={o} aoEnfileirar={() => qc.invalidateQueries()} />
+              )}
+              {proxima && (
+                <Botao variante="acento" onClick={avancar}>
+                  {t('pedido.avancarOrdem')} → {t(`pedido.opStatus.${proxima}`)}
+                </Botao>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -306,6 +314,77 @@ export function PaginaOrdemProducao() {
         onSucesso={() => { setFalhaAberta(false); qc.invalidateQueries(); }}
       />
     </div>
+  );
+}
+
+/** Botão "Imprimir" da OP: acha o G-code do modelo do produto, enfileira na
+ *  impressora da OP e avança o card para "Imprimindo" (decisão do usuário). */
+function BotaoImprimirOP({ op, aoEnfileirar }: { op: OpDetalhe; aoEnfileirar: () => void }) {
+  const { t } = useTranslation();
+  const [aberto, setAberto] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const gcodes = useQuery({
+    queryKey: ['gcode-da-op', op.produto_id],
+    enabled: !!op.produto_id,
+    queryFn: async () => {
+      // modelos da composição do produto → G-codes desses modelos
+      const { data: comp } = await supabase
+        .from('composicao_item')
+        .select('modelo_id')
+        .eq('produto_id', op.produto_id)
+        .eq('tipo', 'modelo_impresso')
+        .is('deleted_at', null);
+      const modeloIds = (comp ?? []).map((c) => c.modelo_id).filter(Boolean);
+      if (modeloIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('arquivo_gcode')
+        .select('id, nome, impressora_id, modelo_id')
+        .in('modelo_id', modeloIds)
+        .is('deleted_at', null);
+      if (error) throw error;
+      return data as { id: string; nome: string; impressora_id: string | null; modelo_id: string }[];
+    },
+  });
+
+  async function enfileirar(gcodeId: string) {
+    setErro(null);
+    const { error } = await supabase.rpc('enfileirar_impressao', {
+      p_gcode: gcodeId,
+      p_impressora: op.impressora_id,
+      p_ordem_producao: op.id,
+      p_avancar: true,
+    });
+    if (error) setErro(mensagemErro(error));
+    else { setAberto(false); aoEnfileirar(); }
+  }
+
+  const lista = gcodes.data ?? [];
+
+  return (
+    <>
+      <Botao variante="secundario" onClick={() => {
+        if (lista.length === 1) enfileirar(lista[0].id);
+        else setAberto(true);
+      }}>
+        🖨 {t('gcode.imprimir')}
+      </Botao>
+      <Modal aberto={aberto} titulo={t('gcode.imprimir')} onFechar={() => setAberto(false)}>
+        {erro && <p className="mb-2 text-xs font-semibold text-erro">{erro}</p>}
+        {lista.length === 0 ? (
+          <EstadoVazio mensagem={t('gcode.nenhum')} />
+        ) : (
+          <div className="space-y-2">
+            {lista.map((g) => (
+              <button key={g.id} onClick={() => enfileirar(g.id)}
+                className="flex w-full items-center gap-2 rounded-lg border border-borda px-3 py-2.5 text-left text-sm font-semibold text-ink hover:border-brand-azul hover:bg-brand-azul/5">
+                📄 {g.nome}
+              </button>
+            ))}
+          </div>
+        )}
+      </Modal>
+    </>
   );
 }
 

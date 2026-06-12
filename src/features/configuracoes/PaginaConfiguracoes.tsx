@@ -13,9 +13,10 @@ import {
   Etiqueta, Modal, Selecao, Tabela,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
+import { AbaAgente } from './AbaAgente';
 import type { Papel } from '@/auth/permissoes';
 
-type Aba = 'operacional' | 'equipe' | 'plano';
+type Aba = 'operacional' | 'equipe' | 'agente' | 'plano';
 
 export function PaginaConfiguracoes() {
   const { t } = useTranslation();
@@ -27,6 +28,7 @@ export function PaginaConfiguracoes() {
   const abas: { id: Aba; rotulo: string }[] = [
     { id: 'operacional', rotulo: t('config.operacional') },
     { id: 'equipe', rotulo: t('config.equipe') },
+    { id: 'agente', rotulo: t('agente.aba') },
     { id: 'plano', rotulo: t('config.plano') },
   ];
   return (
@@ -43,6 +45,7 @@ export function PaginaConfiguracoes() {
       </div>
       {aba === 'operacional' && <AbaOperacional />}
       {aba === 'equipe' && <AbaEquipe />}
+      {aba === 'agente' && <AbaAgente />}
       {aba === 'plano' && <AbaPlano />}
     </div>
   );

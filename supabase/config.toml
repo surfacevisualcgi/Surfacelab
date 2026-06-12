@@ -385,6 +385,11 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# O agente local autentica com o PRÓPRIO token (sl_agent_...), não com um JWT
+# do Supabase — a função faz a própria checagem (hash do token → tenant).
+[functions.agente-impressao]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

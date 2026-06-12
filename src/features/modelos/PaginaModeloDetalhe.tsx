@@ -16,6 +16,7 @@ import {
 } from '@/components/ui';
 import { GaleriaFotos } from '@/components/GaleriaFotos';
 import { EditorCores, type CorDisponivel } from '@/components/Cores';
+import { AbaGcode } from './AbaGcode';
 import { useAuth } from '@/auth/AuthProvider';
 
 interface ModeloCompleto {
@@ -55,7 +56,7 @@ interface ModeloCompleto {
   impressora: { nome: string } | null;
 }
 
-type Aba = 'geral' | 'impressao' | 'qualidade' | 'historico';
+type Aba = 'geral' | 'impressao' | 'gcode' | 'qualidade' | 'historico';
 
 function Dado({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
@@ -113,9 +114,16 @@ export function PaginaModeloDetalhe() {
         titulo={m.nome}
         subtitulo={[m.codigo_interno, t(`modelo.origemLabel.${m.origem}`)].filter(Boolean).join(' · ')}
         acoes={
-          <Botao variante="acento" onClick={() => navigate(`/calculadora?modelo=${m.id}`)}>
-            {t('modelo.usarNoCalculo')}
-          </Botao>
+          <div className="flex flex-wrap gap-2">
+            {pode('producao', 'editar') && (
+              <Botao variante="secundario" onClick={() => setAba('gcode')}>
+                🖨 {t('gcode.imprimir')}
+              </Botao>
+            )}
+            <Botao variante="acento" onClick={() => navigate(`/calculadora?modelo=${m.id}`)}>
+              {t('modelo.usarNoCalculo')}
+            </Botao>
+          </div>
         }
       />
 
@@ -123,6 +131,7 @@ export function PaginaModeloDetalhe() {
         abas={[
           { id: 'geral', rotulo: t('modelo.abaGeral') },
           { id: 'impressao', rotulo: t('modelo.abaImpressao') },
+          { id: 'gcode', rotulo: t('gcode.aba') },
           { id: 'qualidade', rotulo: t('modelo.abaQualidade') },
           { id: 'historico', rotulo: t('modelo.abaHistorico') },
         ]}
@@ -207,6 +216,8 @@ export function PaginaModeloDetalhe() {
           </Cartao>
         </div>
       )}
+
+      {aba === 'gcode' && <AbaGcode modeloId={m.id} />}
 
       {aba === 'qualidade' && (
         <div className="grid gap-4 md:grid-cols-2">
