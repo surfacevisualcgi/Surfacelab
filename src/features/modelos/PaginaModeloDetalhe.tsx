@@ -6,7 +6,7 @@
  */
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { duracao } from '@/lib/formato';
@@ -14,11 +14,13 @@ import {
   Abas, Botao, CabecalhoPagina, Carregando, Cartao, Dinheiro, EstadoErro,
   EstadoVazio, Etiqueta,
 } from '@/components/ui';
+import { GaleriaFotos } from '@/components/GaleriaFotos';
 import { useAuth } from '@/auth/AuthProvider';
 
 interface ModeloCompleto {
   id: string;
   nome: string;
+  fotos: string[];
   codigo_interno: string | null;
   descricao: string | null;
   tecnologia: 'fdm' | 'resina';
@@ -65,9 +67,16 @@ function Dado({ rotulo, children }: { rotulo: string; children: React.ReactNode 
 export function PaginaModeloDetalhe() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
-  const { ativa, flag } = useAuth();
+  const { ativa, flag, pode } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [aba, setAba] = useState<Aba>('geral');
+
+  async function salvarFotos(fotos: string[]) {
+    const { error } = await supabase.from('modelo_3d').update({ fotos }).eq('id', id);
+    if (error) throw error;
+    qc.invalidateQueries({ queryKey: ['modelo_3d'] });
+  }
 
   const modelo = useQuery({
     queryKey: ['modelo_3d', id],
@@ -115,16 +124,15 @@ export function PaginaModeloDetalhe() {
 
       {aba === 'geral' && (
         <div className="grid gap-4 md:grid-cols-[260px_1fr]">
-          <Cartao className="flex aspect-square items-center justify-center bg-surface-2">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="url(#gd)" strokeWidth="1" className="opacity-50">
-              <defs>
-                <linearGradient id="gd" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stopColor="#29c2f2" /><stop offset="1" stopColor="#8a3fd1" />
-                </linearGradient>
-              </defs>
-              <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Zm0 2.3L18.6 8 12 11.7 5.4 8 12 4.3ZM5 9.7l6 3.4v6.6l-6-3.4V9.7Zm8 10v-6.6l6-3.4v6.6l-6 3.4Z" />
-            </svg>
-          </Cartao>
+          {/* galeria real (Storage com RLS por tenant) */}
+          <div>
+            <GaleriaFotos
+              fotos={m.fotos ?? []}
+              prefixo={`modelos/${m.id}`}
+              podeEditar={pode('modelos', 'editar')}
+              onChange={salvarFotos}
+            />
+          </div>
           <div className="space-y-4">
             {/* 4 dados-chave de impressão (v2) */}
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">

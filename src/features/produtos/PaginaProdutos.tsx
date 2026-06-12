@@ -12,6 +12,7 @@ import {
   Botao, CabecalhoPagina, Campo, Carregando, Dinheiro, Entrada, EstadoErro,
   EstadoVazio, Etiqueta, Modal, Selecao,
 } from '@/components/ui';
+import { FotoOuPlaceholder } from '@/components/GaleriaFotos';
 import { useAuth } from '@/auth/AuthProvider';
 
 export interface ProdutoView {
@@ -106,21 +107,8 @@ export function PaginaProdutos() {
             return (
               <Link key={p.id} to={`/produtos/${p.id}`}
                 className="group overflow-hidden rounded-xl border border-borda bg-white transition-shadow hover:shadow-md">
-                {/* foto (placeholder até o upload entrar) */}
-                <div className="flex aspect-[4/3] items-center justify-center bg-surface-2">
-                  {p.fotos?.[0] ? (
-                    <img src={p.fotos[0]} alt="" className="size-full object-cover" />
-                  ) : (
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="url(#g)" strokeWidth="1.2" className="opacity-50">
-                      <defs>
-                        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0" stopColor="#4b6ce0" /><stop offset="1" stopColor="#e5179a" />
-                        </linearGradient>
-                      </defs>
-                      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8ZM12 4l6.3 3.6L12 11.2 5.7 7.6 12 4Z" />
-                    </svg>
-                  )}
-                </div>
+                {/* foto real do Storage (URL assinada) */}
+                <FotoOuPlaceholder path={p.fotos?.[0]} alt={p.nome} className="aspect-[4/3] w-full object-cover" />
                 <div className="p-3">
                   <p className="truncate text-sm font-semibold text-ink group-hover:text-brand-azul">{p.nome}</p>
                   <p className="mt-0.5 text-base font-extrabold tabular-nums text-ink">

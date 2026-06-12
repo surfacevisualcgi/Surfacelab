@@ -16,6 +16,7 @@ import {
   Abas, Acordeao, Botao, CabecalhoPagina, Campo, Carregando, Cartao, Dinheiro,
   Entrada, EstadoErro, EstadoVazio, Etiqueta, Modal, Selecao, TabelaDados,
 } from '@/components/ui';
+import { GaleriaFotos } from '@/components/GaleriaFotos';
 import { useAuth } from '@/auth/AuthProvider';
 import type { ProdutoView } from './PaginaProdutos';
 
@@ -28,10 +29,16 @@ interface Canal { id: string; nome: string; taxa_marketplace: number; taxa_pagam
 export function PaginaProdutoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
-  const { ativa, formato } = useAuth();
+  const { ativa, formato, pode } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [aba, setAba] = useState<Aba>('geral');
+
+  async function salvarFotos(fotos: string[]) {
+    const { error } = await supabase.from('produto').update({ fotos }).eq('id', id);
+    if (error) throw error;
+    qc.invalidateQueries({ queryKey: ['v_produto'] });
+  }
 
   const produto = useQuery({
     queryKey: ['v_produto', id],
@@ -95,16 +102,15 @@ export function PaginaProdutoDetalhe() {
 
       {aba === 'geral' && (
         <div className="grid gap-4 md:grid-cols-[260px_1fr]">
-          <Cartao className="flex aspect-square items-center justify-center bg-surface-2">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="url(#gp)" strokeWidth="1" className="opacity-50">
-              <defs>
-                <linearGradient id="gp" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stopColor="#4b6ce0" /><stop offset="1" stopColor="#e5179a" />
-                </linearGradient>
-              </defs>
-              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8ZM12 4l6.3 3.6L12 11.2 5.7 7.6 12 4Z" />
-            </svg>
-          </Cartao>
+          {/* galeria real (Storage com RLS por tenant) */}
+          <div>
+            <GaleriaFotos
+              fotos={p.fotos ?? []}
+              prefixo={`produtos/${p.id}`}
+              podeEditar={pode('produtos', 'editar')}
+              onChange={salvarFotos}
+            />
+          </div>
           <div className="space-y-4">
             {/* resumo financeiro — 1 destaque por cartão (v2) */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

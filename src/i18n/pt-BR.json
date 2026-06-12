@@ -538,6 +538,12 @@
     "passoProduto": "Monte um produto com composição",
     "passoCalculo": "Calcule o preço e gere um orçamento"
   },
+  "fotos": {
+    "adicionar": "Adicionar foto",
+    "principal": "Foto principal",
+    "definirPrincipal": "Definir como principal",
+    "grandeDemais": "Imagem acima de 8 MB — reduza antes de enviar"
+  },
   "plano": {
     "limiteAtingido": "Limite do plano atingido",
     "fazerUpgrade": "Fazer upgrade"

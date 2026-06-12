@@ -10,12 +10,15 @@ import {
   Botao, CabecalhoPagina, Campo, Carregando, Entrada, EstadoErro, EstadoVazio,
   Etiqueta, Modal, Selecao,
 } from '@/components/ui';
+import { FotoOuPlaceholder } from '@/components/GaleriaFotos';
 import { useAuth } from '@/auth/AuthProvider';
 import type { Material } from '../cadastros/PaginaCadastros';
 
 export interface Modelo3D {
   id: string;
   nome: string;
+  fotos: string[];
+  cores: { nome: string; hex: string; foto?: string }[];
   codigo_interno: string | null;
   tecnologia: 'fdm' | 'resina';
   tempo_impressao_min: number;
@@ -105,15 +108,8 @@ export function PaginaModelos() {
             return (
               <div key={m.id}
                 className="group flex flex-col overflow-hidden rounded-xl border border-borda bg-white transition-shadow hover:shadow-md">
-                <Link to={`/modelos/${m.id}`} className="flex aspect-[4/3] items-center justify-center bg-surface-2">
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="url(#gm)" strokeWidth="1.2" className="opacity-50">
-                    <defs>
-                      <linearGradient id="gm" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0" stopColor="#29c2f2" /><stop offset="1" stopColor="#8a3fd1" />
-                      </linearGradient>
-                    </defs>
-                    <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Zm0 2.3L18.6 8 12 11.7 5.4 8 12 4.3ZM5 9.7l6 3.4v6.6l-6-3.4V9.7Zm8 10v-6.6l6-3.4v6.6l-6 3.4Z" />
-                  </svg>
+                <Link to={`/modelos/${m.id}`}>
+                  <FotoOuPlaceholder path={m.fotos?.[0]} alt={m.nome} className="aspect-[4/3] w-full object-cover" />
                 </Link>
                 <div className="flex flex-1 flex-col p-3">
                   <div className="flex items-start justify-between gap-1.5">
