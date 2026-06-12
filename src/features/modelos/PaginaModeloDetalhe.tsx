@@ -17,6 +17,7 @@ import {
 import { GaleriaFotos } from '@/components/GaleriaFotos';
 import { EditorCores, type CorDisponivel } from '@/components/Cores';
 import { AbaGcode } from './AbaGcode';
+import { FormularioModelo, type ModeloEdit } from './FormularioModelo';
 import { useAuth } from '@/auth/AuthProvider';
 
 interface ModeloCompleto {
@@ -74,6 +75,7 @@ export function PaginaModeloDetalhe() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [aba, setAba] = useState<Aba>('geral');
+  const [editando, setEditando] = useState(false);
 
   async function salvarFotos(fotos: string[]) {
     const { error } = await supabase.from('modelo_3d').update({ fotos }).eq('id', id);
@@ -115,6 +117,9 @@ export function PaginaModeloDetalhe() {
         subtitulo={[m.codigo_interno, t(`modelo.origemLabel.${m.origem}`)].filter(Boolean).join(' · ')}
         acoes={
           <div className="flex flex-wrap gap-2">
+            {pode('modelos', 'editar') && (
+              <Botao variante="secundario" onClick={() => setEditando(true)}>{t('acoes.editar')}</Botao>
+            )}
             {pode('producao', 'editar') && (
               <Botao variante="secundario" onClick={() => setAba('gcode')}>
                 🖨 {t('gcode.imprimir')}
@@ -197,6 +202,7 @@ export function PaginaModeloDetalhe() {
               <Dado rotulo={t('modelo.materialRecomendado')}>{m.material?.nome ?? '—'}</Dado>
               <Dado rotulo={t('modelo.perfilFatiamento')}>{m.perfil_fatiamento ?? '—'}</Dado>
               <Dado rotulo="Cor">{m.cor ?? '—'}</Dado>
+              <Dado rotulo={t('formModelo.bico')}>{m.bico ?? '—'}</Dado>
               <Dado rotulo={t('modelo.alturaCamada')}>{m.altura_camada_mm != null ? `${m.altura_camada_mm} mm` : '—'}</Dado>
               <Dado rotulo={t('modelo.preenchimento')}>{m.preenchimento != null ? `${Math.round(Number(m.preenchimento) * 100)}%` : '—'}</Dado>
               <Dado rotulo={t('modelo.paredes')}>{m.paredes ?? '—'}</Dado>
@@ -260,6 +266,13 @@ export function PaginaModeloDetalhe() {
           </Cartao>
         </div>
       )}
+
+      <FormularioModelo
+        modelo={editando ? (m as ModeloEdit) : null}
+        aberto={editando}
+        onFechar={() => setEditando(false)}
+        onSalvo={() => { setEditando(false); qc.invalidateQueries({ queryKey: ['modelo_3d'] }); }}
+      />
     </div>
   );
 }

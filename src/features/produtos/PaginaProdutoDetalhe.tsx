@@ -19,6 +19,7 @@ import {
 } from '@/components/ui';
 import { Foto, GaleriaFotos } from '@/components/GaleriaFotos';
 import { Swatch } from '@/components/Cores';
+import { ModalEditarProduto } from './FormularioProduto';
 import { useAuth } from '@/auth/AuthProvider';
 import type { ProdutoView } from './PaginaProdutos';
 
@@ -38,6 +39,7 @@ export function PaginaProdutoDetalhe() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [aba, setAba] = useState<Aba>('geral');
+  const [editando, setEditando] = useState(false);
 
   async function salvarFotos(fotos: string[]) {
     const { error } = await supabase.from('produto').update({ fotos }).eq('id', id);
@@ -51,9 +53,15 @@ export function PaginaProdutoDetalhe() {
     queryFn: async () => {
       const { data, error } = await supabase.from('v_produto').select('*').eq('id', id).single();
       if (error) throw error;
-      return data as ProdutoView & { descricao: string | null; qtd_planejada_rateio: number; custo_desenvolvimento: number | null };
+      return data as ProdutoView & {
+        descricao: string | null; categoria_id: string | null; dimensoes: string | null;
+        peso_g: number | null; material_principal: string | null; tags: string[];
+        qtd_planejada_rateio: number; custo_desenvolvimento: number | null;
+      };
     },
   });
+
+  const categorias = useLista<{ id: string; nome: string }>('categoria', { ordem: 'nome', desc: false });
 
   const composicao = useQuery({
     queryKey: ['composicao_item', id],
@@ -92,6 +100,9 @@ export function PaginaProdutoDetalhe() {
       <CabecalhoPagina
         titulo={p.nome}
         subtitulo={[p.sku, t(`produto.dispLabel.${p.disponibilidade}`)].filter(Boolean).join(' · ')}
+        acoes={pode('produtos', 'editar') ? (
+          <Botao variante="secundario" onClick={() => setEditando(true)}>{t('acoes.editar')}</Botao>
+        ) : undefined}
       />
 
       <Abas<Aba>
@@ -154,9 +165,24 @@ export function PaginaProdutoDetalhe() {
                 {t('produto.verComposicao')}
               </Botao>
             </div>
-            {p.descricao && (
-              <Cartao><p className="text-sm text-texto-2">{p.descricao}</p></Cartao>
-            )}
+            {/* informações do produto (painel da tela 05 do v2) */}
+            <Cartao>
+              <h2 className="mb-3 text-sm font-bold text-ink">{t('editarProduto.informacoes')}</h2>
+              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <Info rotulo={t('categoria.rotulo')} valor={categorias.data?.find((c) => c.id === p.categoria_id)?.nome} />
+                <Info rotulo={t('novoProduto.materialPrincipal')} valor={p.material_principal} />
+                <Info rotulo={t('novoProduto.dimensoes')} valor={p.dimensoes} />
+                <Info rotulo={t('novoProduto.peso')} valor={p.peso_g != null ? `${p.peso_g} g` : undefined} />
+                <Info rotulo="Status" valor={p.status} />
+                <Info rotulo={t('novoProduto.qtdRateio')} valor={p.qtd_planejada_rateio ? String(p.qtd_planejada_rateio) : undefined} />
+              </dl>
+              {(p.tags ?? []).length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {p.tags.map((tag) => <Etiqueta key={tag}>{tag}</Etiqueta>)}
+                </div>
+              )}
+              {p.descricao && <p className="mt-3 text-sm text-texto-2">{p.descricao}</p>}
+            </Cartao>
           </div>
         </div>
       )}
@@ -181,6 +207,22 @@ export function PaginaProdutoDetalhe() {
           }}
         />
       )}
+
+      <ModalEditarProduto
+        produto={p}
+        aberto={editando}
+        onFechar={() => setEditando(false)}
+        onSalvo={() => { setEditando(false); qc.invalidateQueries({ queryKey: ['v_produto'] }); }}
+      />
+    </div>
+  );
+}
+
+function Info({ rotulo, valor }: { rotulo: string; valor?: string | null }) {
+  return (
+    <div>
+      <dt className="text-[11px] font-bold uppercase tracking-wide text-texto-2">{rotulo}</dt>
+      <dd className="mt-0.5 text-sm font-semibold text-ink">{valor || '—'}</dd>
     </div>
   );
 }

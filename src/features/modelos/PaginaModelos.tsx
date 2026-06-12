@@ -1,19 +1,18 @@
 /**
  * Telas 03/04 — Catálogo de modelos 3D (ficha técnica da peça impressa).
  */
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useCrud, useLista, mensagemErro } from '@/lib/dados';
+import { useLista } from '@/lib/dados';
 import { duracao } from '@/lib/formato';
 import {
-  Botao, CabecalhoPagina, Campo, Carregando, Entrada, EstadoErro, EstadoVazio,
-  Etiqueta, Modal, Selecao,
+  Botao, CabecalhoPagina, Carregando, Entrada, EstadoErro, EstadoVazio, Etiqueta,
 } from '@/components/ui';
 import { FotoOuPlaceholder } from '@/components/GaleriaFotos';
 import { LinhaSwatches } from '@/components/Cores';
+import { FormularioModelo, type ModeloEdit } from './FormularioModelo';
 import { useAuth } from '@/auth/AuthProvider';
-import type { Material } from '../cadastros/PaginaCadastros';
 
 export interface Modelo3D {
   id: string;
@@ -39,40 +38,8 @@ export function PaginaModelos() {
   const { pode } = useAuth();
   const navigate = useNavigate();
   const lista = useLista<Modelo3D>('modelo_3d', { ordem: 'nome', desc: false });
-  const materiais = useLista<Material>('material', { ordem: 'nome', desc: false });
-  const impressoras = useLista<{ id: string; nome: string }>('impressora', { ordem: 'nome', desc: false });
-  const crud = useCrud('modelo_3d');
-  const [editando, setEditando] = useState<Partial<Modelo3D> | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const [editando, setEditando] = useState<ModeloEdit | null>(null);
   const [busca, setBusca] = useState('');
-
-  async function salvar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!editando) return;
-    const f = new FormData(e.currentTarget);
-    const valores = {
-      nome: f.get('nome') as string,
-      codigo_interno: (f.get('codigo_interno') as string) || null,
-      tecnologia: f.get('tecnologia') as string,
-      tempo_impressao_min: Number(f.get('tempo_impressao_min')),
-      peso_peca_g: Number(f.get('peso_peca_g')),
-      peso_suporte_g: Number(f.get('peso_suporte_g')),
-      peso_purga_g: Number(f.get('peso_purga_g')),
-      peso_desperdicio_g: Number(f.get('peso_desperdicio_g')),
-      probabilidade_falha: Number(f.get('probabilidade_falha')) / 100,
-      material_recomendado_id: (f.get('material_recomendado_id') as string) || null,
-      impressora_recomendada_id: (f.get('impressora_recomendada_id') as string) || null,
-      origem: f.get('origem') as string,
-    };
-    try {
-      if (editando.id) await crud.atualizar.mutateAsync({ id: editando.id, ...valores });
-      else await crud.criar.mutateAsync(valores);
-      setEditando(null);
-      setErro(null);
-    } catch (err) {
-      setErro(mensagemErro(err));
-    }
-  }
 
   if (lista.isLoading) return <Carregando />;
   if (lista.isError) return <EstadoErro onRetry={() => lista.refetch()} />;
@@ -143,72 +110,12 @@ export function PaginaModelos() {
         </div>
       )}
 
-      <Modal aberto={!!editando} titulo={editando?.id ? t('acoes.editar') : t('modelo.novo')} onFechar={() => setEditando(null)} largura="max-w-xl">
-        {editando && (
-          <form onSubmit={salvar} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Campo rotulo={t('modelo.nome')} className="col-span-2 sm:col-span-3">
-              <Entrada name="nome" required defaultValue={editando.nome ?? ''} />
-            </Campo>
-            <Campo rotulo="Código">
-              <Entrada name="codigo_interno" defaultValue={editando.codigo_interno ?? ''} />
-            </Campo>
-            <Campo rotulo={t('modelo.tecnologia')}>
-              <Selecao name="tecnologia" defaultValue={editando.tecnologia ?? 'fdm'}>
-                <option value="fdm">FDM</option>
-                <option value="resina">Resina</option>
-              </Selecao>
-            </Campo>
-            <Campo rotulo={t('modelo.origem')}>
-              <Selecao name="origem" defaultValue={editando.origem ?? 'proprio'}>
-                {['proprio', 'comprado', 'gratuito'].map((o) => (
-                  <option key={o} value={o}>{t(`modelo.origemLabel.${o}`)}</option>
-                ))}
-              </Selecao>
-            </Campo>
-            <Campo rotulo={t('modelo.tempoImpressao')}>
-              <Entrada name="tempo_impressao_min" type="number" min="0" required defaultValue={editando.tempo_impressao_min ?? 60} />
-            </Campo>
-            <Campo rotulo={t('modelo.probFalha')}>
-              <Entrada name="probabilidade_falha" type="number" min="0" max="100" step="0.5" defaultValue={editando.probabilidade_falha != null ? Number(editando.probabilidade_falha) * 100 : 5} />
-            </Campo>
-            <Campo rotulo={t('modelo.pesoPeca')}>
-              <Entrada name="peso_peca_g" type="number" min="0" step="any" required defaultValue={editando.peso_peca_g ?? 0} />
-            </Campo>
-            <Campo rotulo={t('modelo.pesoSuporte')}>
-              <Entrada name="peso_suporte_g" type="number" min="0" step="any" defaultValue={editando.peso_suporte_g ?? 0} />
-            </Campo>
-            <Campo rotulo={t('modelo.pesoPurga')}>
-              <Entrada name="peso_purga_g" type="number" min="0" step="any" defaultValue={editando.peso_purga_g ?? 0} />
-            </Campo>
-            <Campo rotulo={t('modelo.pesoDesperdicio')}>
-              <Entrada name="peso_desperdicio_g" type="number" min="0" step="any" defaultValue={editando.peso_desperdicio_g ?? 0} />
-            </Campo>
-            <Campo rotulo={t('modelo.materialRecomendado')} className="col-span-2">
-              <Selecao name="material_recomendado_id" defaultValue={editando.material_recomendado_id ?? ''}>
-                <option value="">—</option>
-                {(materiais.data ?? [])
-                  .filter((m) => m.tipo === 'filamento' || m.tipo === 'resina')
-                  .map((m) => (
-                    <option key={m.id} value={m.id}>{m.nome}</option>
-                  ))}
-              </Selecao>
-            </Campo>
-            <Campo rotulo={t('modelo.impressoraRecomendada')} className="col-span-2">
-              <Selecao name="impressora_recomendada_id" defaultValue={editando.impressora_recomendada_id ?? ''}>
-                <option value="">—</option>
-                {(impressoras.data ?? []).map((i) => (
-                  <option key={i.id} value={i.id}>{i.nome}</option>
-                ))}
-              </Selecao>
-            </Campo>
-            {erro && <p className="col-span-full text-xs font-semibold text-erro">{erro}</p>}
-            <div className="col-span-full flex justify-end gap-2">
-              <Botao type="button" variante="secundario" onClick={() => setEditando(null)}>{t('acoes.cancelar')}</Botao>
-              <Botao type="submit">{t('acoes.salvar')}</Botao>
-            </div>
-          </form>
-        )}
-      </Modal>
+      <FormularioModelo
+        modelo={editando}
+        aberto={!!editando}
+        onFechar={() => setEditando(null)}
+        onSalvo={() => setEditando(null)}
+      />
     </div>
   );
 }

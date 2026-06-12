@@ -90,7 +90,13 @@ export function useCrud(tabela: string, invalidarTambem: string[] = []) {
 
 /** Mensagem de erro amigável (limite de plano, permissão, RLS) */
 export function mensagemErro(e: unknown): string {
-  const msg = e instanceof Error ? e.message : String(e);
+  // erros do Supabase/PostgREST são objetos planos { message, code, ... }
+  const msg =
+    e instanceof Error
+      ? e.message
+      : typeof e === 'object' && e !== null && 'message' in e
+        ? String((e as { message: unknown }).message)
+        : String(e);
   if (msg.includes('row-level security') || msg.includes('violates row-level'))
     return 'Sem permissão para esta ação — ou o limite do seu plano foi atingido.';
   if (msg.includes('limite')) return msg;

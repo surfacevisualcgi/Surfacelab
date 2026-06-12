@@ -3,16 +3,17 @@
  * grade de cards com foto, nome, PREÇO em destaque e linha discreta com
  * margem + chip de status. Leitura via v_produto (custos mascarados).
  */
-import { useMemo, useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useCrud, useLista, mensagemErro } from '@/lib/dados';
+import { useLista } from '@/lib/dados';
 import { percentual } from '@/lib/formato';
 import {
-  Botao, CabecalhoPagina, Campo, Carregando, Dinheiro, Entrada, EstadoErro,
-  EstadoVazio, Etiqueta, Modal, Selecao,
+  Botao, CabecalhoPagina, Carregando, Dinheiro, Entrada, EstadoErro,
+  EstadoVazio, Etiqueta, Selecao,
 } from '@/components/ui';
 import { FotoOuPlaceholder } from '@/components/GaleriaFotos';
+import { ModalNovoProduto } from './FormularioProduto';
 import { useAuth } from '@/auth/AuthProvider';
 
 export interface ProdutoView {
@@ -31,11 +32,8 @@ export interface ProdutoView {
 export function PaginaProdutos() {
   const { t } = useTranslation();
   const { pode, formato } = useAuth();
-  const navigate = useNavigate();
   const lista = useLista<ProdutoView>('v_produto', { ordem: 'nome', desc: false });
-  const crud = useCrud('produto', ['v_produto']);
   const [novo, setNovo] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
   const [filtroDisp, setFiltroDisp] = useState('');
 
@@ -48,22 +46,6 @@ export function PaginaProdutos() {
       ),
     [lista.data, busca, filtroDisp],
   );
-
-  async function criar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    try {
-      const { id } = await crud.criar.mutateAsync({
-        nome: f.get('nome') as string,
-        sku: (f.get('sku') as string) || null,
-        disponibilidade: f.get('disponibilidade') as string,
-      });
-      setNovo(false);
-      navigate(`/produtos/${id}`);
-    } catch (err) {
-      setErro(mensagemErro(err));
-    }
-  }
 
   if (lista.isLoading) return <Carregando />;
   if (lista.isError) return <EstadoErro onRetry={() => lista.refetch()} />;
@@ -127,29 +109,7 @@ export function PaginaProdutos() {
         </div>
       )}
 
-      <Modal aberto={novo} titulo={t('produto.novo')} onFechar={() => setNovo(false)}>
-        <form onSubmit={criar} className="space-y-3">
-          <Campo rotulo={t('produto.nome')}>
-            <Entrada name="nome" required />
-          </Campo>
-          <div className="grid grid-cols-2 gap-3">
-            <Campo rotulo={t('produto.sku')}>
-              <Entrada name="sku" />
-            </Campo>
-            <Campo rotulo={t('produto.disponibilidade')}>
-              <Selecao name="disponibilidade" defaultValue="sob_demanda">
-                <option value="sob_demanda">{t('produto.dispLabel.sob_demanda')}</option>
-                <option value="pronta_entrega">{t('produto.dispLabel.pronta_entrega')}</option>
-              </Selecao>
-            </Campo>
-          </div>
-          {erro && <p className="text-xs font-semibold text-erro">{erro}</p>}
-          <div className="flex justify-end gap-2">
-            <Botao type="button" variante="secundario" onClick={() => setNovo(false)}>{t('acoes.cancelar')}</Botao>
-            <Botao type="submit">{t('acoes.criar')}</Botao>
-          </div>
-        </form>
-      </Modal>
+      <ModalNovoProduto aberto={novo} onFechar={() => setNovo(false)} />
     </div>
   );
 }
