@@ -14,6 +14,8 @@ import {
   EstadoErro, EstadoVazio, Etiqueta, Modal, Selecao, Tabela,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
+import { enviarFoto } from '@/lib/fotos';
+import { FotoOuPlaceholder } from '@/components/GaleriaFotos';
 
 type Aba = 'impressoras' | 'materiais' | 'canais' | 'custosFixos' | 'maoDeObra' | 'energia';
 
@@ -154,6 +156,7 @@ export function PaginaCadastros() {
 // ---------------------------------------------------------------- Materiais
 interface Material {
   id: string; nome: string; tipo: string; marca: string | null; cor: string | null;
+  fornecedor_id: string | null; observacao: string | null;
   unidade_compra: string; unidade_consumo: string; fator_conversao: number;
   preco_compra: number; frete: number; custo_unitario: number;
   saldo: number; reservado: number; minimo: number; custo_medio: number;
@@ -164,6 +167,7 @@ export function AbaMateriais() {
   const { t } = useTranslation();
   const { pode, formato } = useAuth();
   const lista = useLista<Material>('material', { ordem: 'nome', desc: false });
+  const fornecedores = useLista<{ id: string; nome: string }>('fornecedor', { ordem: 'nome', desc: false });
   const crud = useCrud('material');
   const [editando, setEditando] = useState<Partial<Material> | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -191,6 +195,8 @@ export function AbaMateriais() {
       tipo: f.get('tipo') as string,
       marca: (f.get('marca') as string) || null,
       cor: (f.get('cor') as string) || null,
+      fornecedor_id: (f.get('fornecedor_id') as string) || null,
+      observacao: (f.get('observacao') as string) || null,
       unidade_compra: f.get('unidade_compra') as string,
       unidade_consumo: f.get('unidade_consumo') as string,
       fator_conversao: Number(f.get('fator_conversao')),
@@ -304,6 +310,17 @@ export function AbaMateriais() {
               <Entrada name="frete" inputMode="decimal" defaultValue={deCentavos(editando.frete ?? 0)}
                 onChange={(e) => setVivo({ ...vivo, frete: e.target.value })} />
             </Campo>
+            {/* de quem você compra: liga o material às compras/fornecedores */}
+            <Campo rotulo={t('cadastros.material.fornecedor')}>
+              <Selecao name="fornecedor_id" defaultValue={editando.fornecedor_id ?? ''}>
+                <option value="">—</option>
+                {(fornecedores.data ?? []).map((fo) => <option key={fo.id} value={fo.id}>{fo.nome}</option>)}
+              </Selecao>
+            </Campo>
+            <Campo rotulo={t('cadastros.material.observacao')}>
+              <Entrada name="observacao" placeholder="Ex.: secar antes de usar"
+                defaultValue={editando.observacao ?? ''} />
+            </Campo>
             {/* custo unitário calculado AO VIVO (v2 — acento da marca, não teal) */}
             <div className="col-span-2 rounded-xl border border-brand-roxo/30 bg-brand-roxo/5 p-3">
               <p className="text-[11px] font-bold uppercase tracking-wide text-brand-roxo">
@@ -332,6 +349,8 @@ export function AbaMateriais() {
 // -------------------------------------------------------------- Impressoras
 interface Impressora {
   id: string; nome: string; tecnologia: string; fabricante: string | null;
+  modelo: string | null; numero_serie: string | null; foto_url: string | null;
+  data_aquisicao: string | null; horas_dia: number;
   valor_aquisicao: number; vida_util_horas: number; consumo_w: number;
   manutencao_hora: number; perfil_energia_id: string | null; status: string;
   agente_id: string | null;
@@ -344,17 +363,20 @@ function custoHoraImpressora(i: Impressora): number {
 
 export function AbaImpressoras() {
   const { t } = useTranslation();
-  const { pode, formato } = useAuth();
+  const { pode, formato, ativa } = useAuth();
   const lista = useLista<Impressora>('impressora', { ordem: 'nome', desc: false });
   const agentes = useLista<{ id: string; nome: string }>('agente_impressao', { ordem: 'nome', desc: false });
+  const perfisEnergia = useLista<{ id: string; nome: string }>('perfil_energia', { ordem: 'nome', desc: false });
   const crud = useCrud('impressora');
   const [editando, setEditando] = useState<Partial<Impressora> | null>(null);
+  const [fotoNova, setFotoNova] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   // estado vivo para o card "custo por hora calculado" (modal 04 do v2)
   const [vivoImp, setVivoImp] = useState({ valor: '', vida: 5000, manutencao: '' });
 
   function abrirImp(i: Partial<Impressora>) {
     setEditando(i);
+    setFotoNova(null);
     setVivoImp({
       valor: deCentavos(i.valor_aquisicao ?? 0),
       vida: i.vida_util_horas ?? 5000,
@@ -368,17 +390,27 @@ export function AbaImpressoras() {
     e.preventDefault();
     if (!editando) return;
     const f = new FormData(e.currentTarget);
-    const valores = {
-      nome: f.get('nome') as string,
-      tecnologia: f.get('tecnologia') as string,
-      fabricante: (f.get('fabricante') as string) || null,
-      valor_aquisicao: paraCentavos(f.get('valor_aquisicao') as string),
-      vida_util_horas: Number(f.get('vida_util_horas')),
-      consumo_w: Number(f.get('consumo_w')),
-      manutencao_hora: paraCentavos(f.get('manutencao_hora') as string),
-      agente_id: (f.get('agente_id') as string) || null,
-    };
     try {
+      // foto vai para o Storage (RLS por tenant); a tabela guarda o path
+      let fotoUrl = editando.foto_url ?? null;
+      if (fotoNova && ativa) {
+        fotoUrl = await enviarFoto(ativa.tenant_id, 'impressoras', fotoNova);
+      }
+      const valores = {
+        nome: f.get('nome') as string,
+        tecnologia: f.get('tecnologia') as string,
+        fabricante: (f.get('fabricante') as string) || null,
+        numero_serie: (f.get('numero_serie') as string) || null,
+        data_aquisicao: (f.get('data_aquisicao') as string) || null,
+        horas_dia: Number(f.get('horas_dia') || 8),
+        foto_url: fotoUrl,
+        valor_aquisicao: paraCentavos(f.get('valor_aquisicao') as string),
+        vida_util_horas: Number(f.get('vida_util_horas')),
+        consumo_w: Number(f.get('consumo_w')),
+        manutencao_hora: paraCentavos(f.get('manutencao_hora') as string),
+        perfil_energia_id: (f.get('perfil_energia_id') as string) || null,
+        agente_id: (f.get('agente_id') as string) || null,
+      };
       if (editando.id) await crud.atualizar.mutateAsync({ id: editando.id, ...valores });
       else await crud.criar.mutateAsync(valores);
       setEditando(null);
@@ -435,6 +467,33 @@ export function AbaImpressoras() {
             </Campo>
             <Campo rotulo="Fabricante">
               <Entrada name="fabricante" defaultValue={editando.fabricante ?? ''} />
+            </Campo>
+            <Campo rotulo={t('cadastros.impressora.numeroSerie')}>
+              <Entrada name="numero_serie" defaultValue={editando.numero_serie ?? ''} />
+            </Campo>
+            <Campo rotulo={t('cadastros.impressora.dataAquisicao')}>
+              <Entrada name="data_aquisicao" type="date" defaultValue={editando.data_aquisicao ?? ''} />
+            </Campo>
+            <Campo rotulo={t('cadastros.impressora.horasDia')} dica={t('cadastros.impressora.horasDiaDica')}>
+              <Entrada name="horas_dia" type="number" min="0" max="24" step="0.5"
+                defaultValue={editando.horas_dia ?? 8} />
+            </Campo>
+            <Campo rotulo={t('cadastros.impressora.perfilEnergia')}>
+              <Selecao name="perfil_energia_id" defaultValue={editando.perfil_energia_id ?? ''}>
+                <option value="">—</option>
+                {(perfisEnergia.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </Selecao>
+            </Campo>
+            <Campo rotulo={t('cadastros.impressora.foto')} className="col-span-2">
+              <div className="flex items-center gap-3">
+                {(fotoNova || editando.foto_url) && (
+                  fotoNova
+                    ? <img src={URL.createObjectURL(fotoNova)} alt="" className="size-14 rounded-lg object-cover" />
+                    : <FotoOuPlaceholder path={editando.foto_url} alt={editando.nome ?? ''} className="size-14 rounded-lg object-cover" />
+                )}
+                <input type="file" accept="image/*" className="text-xs text-texto-2"
+                  onChange={(e) => setFotoNova(e.target.files?.[0] ?? null)} />
+              </div>
             </Campo>
             <Campo rotulo={t('cadastros.impressora.valorAquisicao')}>
               <Entrada name="valor_aquisicao" inputMode="decimal" defaultValue={deCentavos(editando.valor_aquisicao ?? 0)}

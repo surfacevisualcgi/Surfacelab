@@ -11,8 +11,11 @@ import { useAuth } from '@/auth/AuthProvider';
 
 interface Fornecedor {
   id: string; nome: string; cnpj: string | null;
+  categorias: string[];
   contato_nome: string | null; contato_telefone: string | null;
   prazo_entrega_dias: number | null; pedido_minimo: number | null;
+  condicoes_pagamento: string | null; endereco: string | null;
+  observacoes: string | null;
   avaliacao: number | null;
 }
 
@@ -31,10 +34,16 @@ export function PaginaFornecedores() {
     const valores = {
       nome: f.get('nome') as string,
       cnpj: (f.get('cnpj') as string) || null,
+      categorias: (f.get('categorias') as string)
+        ? (f.get('categorias') as string).split(',').map((s) => s.trim()).filter(Boolean)
+        : [],
       contato_nome: (f.get('contato_nome') as string) || null,
       contato_telefone: (f.get('contato_telefone') as string) || null,
       prazo_entrega_dias: f.get('prazo_entrega_dias') ? Number(f.get('prazo_entrega_dias')) : null,
       pedido_minimo: f.get('pedido_minimo') ? paraCentavos(f.get('pedido_minimo') as string) : null,
+      condicoes_pagamento: (f.get('condicoes_pagamento') as string) || null,
+      endereco: (f.get('endereco') as string) || null,
+      observacoes: (f.get('observacoes') as string) || null,
       avaliacao: f.get('avaliacao') ? Number(f.get('avaliacao')) : null,
     };
     try {
@@ -85,7 +94,20 @@ export function PaginaFornecedores() {
       ) : (
         <TabelaDados<Fornecedor>
           colunas={[
-            { titulo: t('fornecedor.nome'), principal: true, render: (fo) => <span className="font-semibold text-ink">{fo.nome}</span> },
+            {
+              titulo: t('fornecedor.nome'),
+              principal: true,
+              render: (fo) => (
+                <span className="font-semibold text-ink">
+                  {fo.nome}
+                  {(fo.categorias ?? []).length > 0 && (
+                    <span className="block text-[10px] font-normal text-texto-2">
+                      {(fo.categorias ?? []).join(' · ')}
+                    </span>
+                  )}
+                </span>
+              ),
+            },
             { titulo: 'Contato', render: (fo) => <span className="text-texto-2">{fo.contato_nome ?? fo.contato_telefone ?? '—'}</span> },
             { titulo: t('fornecedor.prazoEntrega'), numerica: true, render: (fo) => fo.prazo_entrega_dias != null ? `${fo.prazo_entrega_dias}d` : '—' },
             { titulo: t('fornecedor.pedidoMinimo'), numerica: true, render: (fo) => <Dinheiro centavos={fo.pedido_minimo} /> },
@@ -124,6 +146,20 @@ export function PaginaFornecedores() {
             </Campo>
             <Campo rotulo={`${t('fornecedor.avaliacao')} (1–5)`}>
               <Entrada name="avaliacao" type="number" min="1" max="5" defaultValue={editando.avaliacao ?? ''} />
+            </Campo>
+            <Campo rotulo={t('fornecedor.categorias')} dica={t('fornecedor.categoriasDica')} className="col-span-2">
+              <Entrada name="categorias" defaultValue={(editando.categorias ?? []).join(', ')} />
+            </Campo>
+            <Campo rotulo={t('fornecedor.condicoesPagamento')} className="col-span-2">
+              <Entrada name="condicoes_pagamento" placeholder="Ex.: 30 dias, Pix à vista com 5% off…"
+                defaultValue={editando.condicoes_pagamento ?? ''} />
+            </Campo>
+            <Campo rotulo={t('fornecedor.endereco')} className="col-span-2">
+              <Entrada name="endereco" defaultValue={editando.endereco ?? ''} />
+            </Campo>
+            <Campo rotulo={t('fornecedor.observacoes')} className="col-span-2">
+              <textarea name="observacoes" rows={2} defaultValue={editando.observacoes ?? ''}
+                className="w-full rounded-lg border border-borda bg-white px-3 py-2 text-sm" />
             </Campo>
             {erro && <p className="col-span-2 text-xs font-semibold text-erro">{erro}</p>}
             <div className="col-span-2 flex justify-end gap-2">

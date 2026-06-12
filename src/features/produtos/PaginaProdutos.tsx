@@ -21,6 +21,7 @@ export interface ProdutoView {
   sku: string | null;
   nome: string;
   status: string;
+  categoria_id: string | null;
   disponibilidade: string;
   fotos: string[];
   custo_atual: number | null; // null = mascarado
@@ -33,18 +34,23 @@ export function PaginaProdutos() {
   const { t } = useTranslation();
   const { pode, formato } = useAuth();
   const lista = useLista<ProdutoView>('v_produto', { ordem: 'nome', desc: false });
+  const categorias = useLista<{ id: string; nome: string; escopo: string }>('categoria', { ordem: 'nome', desc: false });
   const [novo, setNovo] = useState(false);
   const [busca, setBusca] = useState('');
   const [filtroDisp, setFiltroDisp] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
+
+  const categoriasProduto = (categorias.data ?? []).filter((c) => c.escopo === 'produto');
 
   const filtrados = useMemo(
     () =>
       (lista.data ?? []).filter(
         (p) =>
           (!busca || p.nome.toLowerCase().includes(busca.toLowerCase()) || p.sku?.toLowerCase().includes(busca.toLowerCase())) &&
-          (!filtroDisp || p.disponibilidade === filtroDisp),
+          (!filtroDisp || p.disponibilidade === filtroDisp) &&
+          (!filtroCategoria || p.categoria_id === filtroCategoria),
       ),
-    [lista.data, busca, filtroDisp],
+    [lista.data, busca, filtroDisp, filtroCategoria],
   );
 
   if (lista.isLoading) return <Carregando />;
@@ -71,11 +77,17 @@ export function PaginaProdutos() {
           <option value="pronta_entrega">{t('produto.dispLabel.pronta_entrega')}</option>
           <option value="sob_demanda">{t('produto.dispLabel.sob_demanda')}</option>
         </Selecao>
+        {categoriasProduto.length > 0 && (
+          <Selecao value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} className="!w-auto">
+            <option value="">{t('produto.todasCategorias')}</option>
+            {categoriasProduto.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </Selecao>
+        )}
       </div>
 
       {filtrados.length === 0 ? (
         <EstadoVazio
-          mensagem={busca || filtroDisp ? t('estados.semResultados') : undefined}
+          mensagem={busca || filtroDisp || filtroCategoria ? t('estados.semResultados') : undefined}
           acao={pode('produtos', 'criar') && !busca ? <Botao onClick={() => setNovo(true)}>+ {t('produto.novo')}</Botao> : undefined}
         />
       ) : (

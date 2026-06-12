@@ -19,6 +19,7 @@ interface ClienteView {
   id: string; tipo: string; nome: string;
   cpf_cnpj: string | null; email: string | null; telefone_whatsapp: string | null;
   cep: string | null; endereco: string | null; cidade: string | null; estado: string | null;
+  canal_origem: string | null; indicacao: string | null;
   observacoes: string | null;
   consentimento_marketing: boolean; anonimizado: boolean; pii_visivel: boolean;
 }
@@ -53,6 +54,8 @@ export function PaginaClientes() {
       tipo: f.get('tipo') as string,
       cidade: (f.get('cidade') as string) || null,
       estado: (f.get('estado') as string) || null,
+      canal_origem: (f.get('canal_origem') as string) || null,
+      indicacao: (f.get('indicacao') as string) || null,
     };
     if (podePii) {
       Object.assign(valores, {
@@ -231,6 +234,18 @@ export function PaginaClientes() {
             </Campo>
             <Campo rotulo="UF">
               <Entrada name="estado" maxLength={2} defaultValue={editando.estado ?? ''} />
+            </Campo>
+            {/* origem do cliente: alimenta rentabilidade por canal (relatórios) */}
+            <Campo rotulo={t('cliente.canalOrigem')}>
+              <Selecao name="canal_origem" defaultValue={editando.canal_origem ?? ''}>
+                <option value="">—</option>
+                {(['instagram', 'whatsapp', 'marketplace', 'feira', 'indicacao', 'site', 'outro'] as const).map((c) => (
+                  <option key={c} value={c}>{t(`cliente.canalOrigemLabel.${c}`)}</option>
+                ))}
+              </Selecao>
+            </Campo>
+            <Campo rotulo={t('cliente.indicacao')}>
+              <Entrada name="indicacao" placeholder="Quem indicou?" defaultValue={editando.indicacao ?? ''} />
             </Campo>
             {podePii && (
               <Campo rotulo="Observações" className="col-span-2">

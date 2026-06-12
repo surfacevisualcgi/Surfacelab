@@ -16,6 +16,7 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 import { ModalFalha } from './ModalFalha';
+import { ModalNovoPedido } from './ModalNovoPedido';
 
 interface PedidoView {
   id: string; numero: string; status: string;
@@ -46,6 +47,7 @@ export function PaginaPedidos() {
   const [aba, setAba] = useState<'kanban' | 'lista'>('kanban');
   const [colunaMobile, setColunaMobile] = useState<Coluna>('aguardando_aprovacao');
   const [falhaOp, setFalhaOp] = useState<{ id: string; numero: string } | null>(null);
+  const [novoPedido, setNovoPedido] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   // drag-and-drop: id sendo arrastado + coluna sob o cursor (highlight)
   const [arrastando, setArrastando] = useState<string | null>(null);
@@ -168,7 +170,12 @@ export function PaginaPedidos() {
 
   return (
     <div>
-      <CabecalhoPagina titulo={t('pedido.titulo')} />
+      <CabecalhoPagina
+        titulo={t('pedido.titulo')}
+        acoes={pode('pedidos', 'criar')
+          ? <Botao onClick={() => setNovoPedido(true)}>+ {t('pedido.novo')}</Botao>
+          : undefined}
+      />
       <Abas
         abas={[
           { id: 'kanban' as const, rotulo: t('pedido.kanban') },
@@ -284,6 +291,11 @@ export function PaginaPedidos() {
         op={falhaOp}
         onFechar={() => setFalhaOp(null)}
         onSucesso={() => { setFalhaOp(null); qc.invalidateQueries(); }}
+      />
+      <ModalNovoPedido
+        aberto={novoPedido}
+        onFechar={() => setNovoPedido(false)}
+        onCriado={() => setAba('lista')}
       />
     </div>
   );

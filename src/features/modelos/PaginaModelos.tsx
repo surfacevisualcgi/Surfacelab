@@ -8,6 +8,7 @@ import { useLista } from '@/lib/dados';
 import { duracao } from '@/lib/formato';
 import {
   Botao, CabecalhoPagina, Carregando, Entrada, EstadoErro, EstadoVazio, Etiqueta,
+  Selecao,
 } from '@/components/ui';
 import { FotoOuPlaceholder } from '@/components/GaleriaFotos';
 import { LinhaSwatches } from '@/components/Cores';
@@ -20,6 +21,8 @@ export interface Modelo3D {
   fotos: string[];
   cores: { nome: string; hex: string; foto?: string }[];
   codigo_interno: string | null;
+  categoria_id: string | null;
+  versao: string;
   tecnologia: 'fdm' | 'resina';
   tempo_impressao_min: number;
   peso_peca_g: number;
@@ -38,15 +41,25 @@ export function PaginaModelos() {
   const { pode } = useAuth();
   const navigate = useNavigate();
   const lista = useLista<Modelo3D>('modelo_3d', { ordem: 'nome', desc: false });
+  const categorias = useLista<{ id: string; nome: string; escopo: string }>('categoria', { ordem: 'nome', desc: false });
+  const materiais = useLista<{ id: string; nome: string }>('material', { ordem: 'nome', desc: false });
   const [editando, setEditando] = useState<ModeloEdit | null>(null);
   const [busca, setBusca] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
+  const [filtroMaterial, setFiltroMaterial] = useState('');
+  const [filtroTec, setFiltroTec] = useState('');
 
   if (lista.isLoading) return <Carregando />;
   if (lista.isError) return <EstadoErro onRetry={() => lista.refetch()} />;
 
+  const categoriasModelo = (categorias.data ?? []).filter((c) => c.escopo === 'modelo');
+  const comFiltro = !!(busca || filtroCategoria || filtroMaterial || filtroTec);
   const filtrados = (lista.data ?? []).filter(
-    (m) => !busca || m.nome.toLowerCase().includes(busca.toLowerCase())
-      || m.codigo_interno?.toLowerCase().includes(busca.toLowerCase()),
+    (m) => (!busca || m.nome.toLowerCase().includes(busca.toLowerCase())
+      || m.codigo_interno?.toLowerCase().includes(busca.toLowerCase()))
+      && (!filtroCategoria || m.categoria_id === filtroCategoria)
+      && (!filtroMaterial || m.material_recomendado_id === filtroMaterial)
+      && (!filtroTec || m.tecnologia === filtroTec),
   );
 
   return (
@@ -56,15 +69,31 @@ export function PaginaModelos() {
         subtitulo={t('modelo.subtitulo')}
         acoes={pode('modelos', 'criar') ? <Botao onClick={() => setEditando({})}>+ {t('modelo.novo')}</Botao> : undefined}
       />
-      <div className="mb-4">
+      {/* busca + filtros numa linha (categoria / material / tecnologia) */}
+      <div className="mb-4 flex flex-wrap gap-2">
         <Entrada placeholder={t('acoes.buscar')} value={busca}
           onChange={(e) => setBusca(e.target.value)} className="max-w-xs" />
+        {categoriasModelo.length > 0 && (
+          <Selecao value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} className="!w-auto">
+            <option value="">{t('modelo.todasCategorias')}</option>
+            {categoriasModelo.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </Selecao>
+        )}
+        <Selecao value={filtroMaterial} onChange={(e) => setFiltroMaterial(e.target.value)} className="!w-auto">
+          <option value="">{t('modelo.todosMateriais')}</option>
+          {(materiais.data ?? []).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+        </Selecao>
+        <Selecao value={filtroTec} onChange={(e) => setFiltroTec(e.target.value)} className="!w-auto">
+          <option value="">{t('modelo.todasTecnologias')}</option>
+          <option value="fdm">FDM</option>
+          <option value="resina">Resina</option>
+        </Selecao>
       </div>
 
       {filtrados.length === 0 ? (
         <EstadoVazio
-          mensagem={busca ? t('estados.semResultados') : undefined}
-          acao={pode('modelos', 'criar') && !busca ? <Botao onClick={() => setEditando({})}>+ {t('modelo.novo')}</Botao> : undefined}
+          mensagem={comFiltro ? t('estados.semResultados') : undefined}
+          acao={pode('modelos', 'criar') && !comFiltro ? <Botao onClick={() => setEditando({})}>+ {t('modelo.novo')}</Botao> : undefined}
         />
       ) : (
         /* grade de cards (v2): foto, nome, metadados técnicos discretos */
@@ -84,7 +113,10 @@ export function PaginaModelos() {
                     <Link to={`/modelos/${m.id}`} className="truncate text-sm font-semibold text-ink group-hover:text-brand-azul">
                       {m.nome}
                     </Link>
-                    <Etiqueta cor="roxo">{m.tecnologia.toUpperCase()}</Etiqueta>
+                    <span className="flex shrink-0 items-center gap-1">
+                      {m.versao && <Etiqueta>{m.versao}</Etiqueta>}
+                      <Etiqueta cor="roxo">{m.tecnologia.toUpperCase()}</Etiqueta>
+                    </span>
                   </div>
                   <p className="mt-1 text-[11px] text-texto-2">
                     {duracao(m.tempo_impressao_min)} · {pesoTotal.toLocaleString()}{un} · {(Number(m.probabilidade_falha) * 100).toFixed(0)}% falha

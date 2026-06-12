@@ -182,6 +182,7 @@
     "cliente": "Cliente",
     "total": "Total",
     "prazo": "Prazo",
+    "novo": "Novo pedido",
     "cancelarPedido": "Cancelar pedido",
     "statusLabel": {
       "criado": "Criado",
@@ -221,6 +222,8 @@
     "semComunicacoes": "Anotações e comunicação da equipe — em breve",
     "impactoCusto": "Impacto estimado no custo",
     "impactoCustoDica": "Desperdício × custo médio do material. Entra no custo real da OP.",
+    "responsavelFalha": "Responsável",
+    "fotoFalha": "Foto da falha",
     "etapaFalha": {
       "preparacao": "Preparação",
       "impressao": "Impressão",
@@ -291,7 +294,18 @@
     "anonimizar": "Excluir/anonimizar (LGPD)",
     "anonimizarAviso": "Os dados pessoais serão apagados permanentemente. O histórico fiscal e financeiro das vendas é preservado, como exige a lei. Esta ação não pode ser desfeita.",
     "exportarDados": "Exportar dados (LGPD)",
-    "opcionalLgpd": "Opcional — peça apenas se precisar para NF ou entrega"
+    "opcionalLgpd": "Opcional — peça apenas se precisar para NF ou entrega",
+    "canalOrigem": "Como conheceu (canal de origem)",
+    "indicacao": "Indicação de",
+    "canalOrigemLabel": {
+      "instagram": "Instagram",
+      "whatsapp": "WhatsApp",
+      "marketplace": "Marketplace",
+      "feira": "Feira/Evento",
+      "indicacao": "Indicação",
+      "site": "Site",
+      "outro": "Outro"
+    }
   },
   "fornecedor": {
     "titulo": "Fornecedores",
@@ -303,7 +317,12 @@
     "nome": "Nome",
     "prazoEntrega": "Prazo de entrega (dias)",
     "pedidoMinimo": "Pedido mínimo",
-    "avaliacao": "Avaliação"
+    "avaliacao": "Avaliação",
+    "categorias": "Categorias fornecidas",
+    "categoriasDica": "Separe por vírgula: filamento, resina, embalagem…",
+    "condicoesPagamento": "Condições de pagamento",
+    "endereco": "Endereço",
+    "observacoes": "Observações"
   },
   "financeiro": {
     "titulo": "Financeiro",
@@ -368,7 +387,10 @@
     "impressoraRecomendada": "Impressora recomendada",
     "origem": "Origem",
     "origemLabel": { "proprio": "Próprio", "comprado": "Comprado", "gratuito": "Gratuito" },
-    "usarNoCalculo": "Usar em novo cálculo"
+    "usarNoCalculo": "Usar em novo cálculo",
+    "todasCategorias": "Todas as categorias",
+    "todosMateriais": "Todos os materiais",
+    "todasTecnologias": "FDM + Resina"
   },
   "produto": {
     "titulo": "Produtos",
@@ -378,6 +400,7 @@
     "abaVariacoes": "Variações",
     "abaCanais": "Margem por canal",
     "todasDisponibilidades": "Todas",
+    "todasCategorias": "Todas as categorias",
     "margemCurta": "Margem",
     "criarOrcamento": "Criar orçamento",
     "verComposicao": "Ver composição",
@@ -437,7 +460,13 @@
       "vidaUtil": "Vida útil (horas)",
       "consumo": "Consumo (W)",
       "manutencaoHora": "Manutenção (R$/h)",
-      "custoHora": "Custo/hora calculado"
+      "custoHora": "Custo/hora calculado",
+      "numeroSerie": "Nº de série",
+      "dataAquisicao": "Data de aquisição",
+      "horasDia": "Horas/dia planejadas",
+      "horasDiaDica": "Quanto a máquina roda por dia — alimenta a utilização nos relatórios",
+      "foto": "Foto da máquina",
+      "perfilEnergia": "Perfil de energia"
     },
     "material": {
       "nome": "Nome",
@@ -454,7 +483,9 @@
       "fatorConversao": "Fator de conversão",
       "precoCompra": "Preço de compra",
       "frete": "Frete",
-      "custoUnitario": "Custo por unidade"
+      "custoUnitario": "Custo por unidade",
+      "fornecedor": "Fornecedor",
+      "observacao": "Observação"
     },
     "canal": {
       "nome": "Nome",
@@ -681,6 +712,45 @@
     "semNome": "Dê um nome ao produto"
   },
   "editarProduto": { "titulo": "Editar produto", "informacoes": "Informações do produto" },
+  "novoPedido": {
+    "titulo": "Novo pedido",
+    "passoCliente": "Cliente",
+    "passoItens": "Itens",
+    "passoPagamento": "Pagamento & entrega",
+    "passoRevisao": "Revisão",
+    "semCliente": "— Sem cliente (venda de balcão) —",
+    "clienteDica": "Vincular um cliente alimenta o histórico de compras e o financeiro.",
+    "canal": "Canal de venda",
+    "produto": "Produto",
+    "addProduto": "Adicionar produto",
+    "addAvulso": "Item avulso",
+    "avulsoDica": "Item sem produto cadastrado (ex.: taxa de arte, serviço). Não gera ordem de produção.",
+    "descricaoAvulsa": "Descrição do item",
+    "precoUnit": "Preço unit.",
+    "semItens": "Adicione ao menos um item ao pedido",
+    "precoCadastro": "preço do cadastro",
+    "entrada": "Entrada / sinal",
+    "entradaDica": "Vence hoje no contas a receber",
+    "parcelas": "Parcelas do saldo",
+    "dataRecebimento": "Previsão de recebimento",
+    "prazoEntrega": "Prazo de entrega",
+    "freteCobrado": "Frete cobrado",
+    "observacoes": "Observações",
+    "resumo": "Resumo do pedido",
+    "subtotal": "Itens",
+    "frete": "Frete",
+    "totalPedido": "Total do pedido",
+    "saldoRestante": "Saldo a receber",
+    "itensResumo": "{{n}} item(ns), {{ops}} com produção",
+    "efeitosTitulo": "Ao criar este pedido",
+    "efeitoOp": "Gera 1 ordem de produção por produto e reserva o estoque dos insumos",
+    "efeitoFinanceiro": "Lança o contas a receber (entrada hoje + saldo nas parcelas)",
+    "efeitoSnapshot": "Congela preços e custos — mudanças futuras no cadastro não afetam esta venda",
+    "criar": "Criar pedido",
+    "voltar": "Voltar",
+    "continuar": "Continuar",
+    "entradaMaiorQueTotal": "A entrada não pode ser maior que o total"
+  },
   "formModelo": {
     "secaoIdentificacao": "Identificação",
     "secaoLicenca": "Licença comercial",

@@ -2,7 +2,7 @@
 
 > **Como usar:** este é o nosso checklist entre sessões. Quando algo for feito,
 > trocamos `- [ ]` por `- [x]`. Comece cada sessão lendo este arquivo para
-> retomar sem se perder. Última atualização: **12/jun/2026**.
+> retomar sem se perder. Última atualização: **12/jun/2026 (tarde — P1 e P2 concluídos)**.
 >
 > Legenda: `- [x]` feito · `- [ ]` a fazer · ⭐ próximo recomendado
 
@@ -20,28 +20,34 @@
 - [x] Busca global; aba Arquivos da OP (upload)
 - [x] **Novo Produto em stepper** + editor de identidade do produto
 - [x] **Formulário completo do Modelo 3D** (criar + editar, todos os campos)
+- [x] **Novo Pedido manual** (RPC `criar_pedido_manual` + stepper com resumo ao vivo;
+      entrada/parcelas viram contas a receber, item de produto gera OP + reserva)
+- [x] Filtros nos catálogos + cadastros completados (P2 inteiro — ver abaixo)
 
 ---
 
 ## 🔜 A fazer (por prioridade)
 
-### P1 — núcleo do catálogo
+### P1 — núcleo do catálogo ✅ COMPLETO
 - [x] Novo Produto em stepper
 - [x] Editar identidade do produto (modal + painel "Informações do produto")
 - [x] Formulário completo do Modelo 3D (criar + editar)
-- [ ] ⭐ **Novo Pedido manual** — stepper Cliente → Itens → Pagamento & entrega → Revisão, com resumo do pedido ao vivo (hoje pedido só nasce de orçamento aprovado)
+- [x] **Novo Pedido manual** — stepper Cliente → Itens → Pagamento & entrega → Revisão,
+      resumo ao vivo. RPC `criar_pedido_manual` no servidor: snapshot congelado,
+      reserva de estoque, 1 OP por item de produto, contas a receber (entrada vence
+      hoje + saldo em N parcelas mensais). Item avulso (serviço/taxa) não gera OP.
 
-### P2 — completar formulários/cadastros
-- [ ] Filtro por **categoria** no catálogo de produtos
-- [ ] Filtros no catálogo de modelos (categoria / material / status) + badge de versão no card
-- [ ] Material (modal): campo **fornecedor** + **observação**
-- [ ] Impressora (modal): **nº de série, data de aquisição, horas/dia, foto, perfil de energia**
-- [ ] Fornecedor (modal): **categorias fornecidas (multi), condições de pagamento, endereço, observações**
-- [ ] Cliente (modal): **canal de origem, indicação**
-- [ ] Registrar falha (modal): **foto da falha** + **responsável**
+### P2 — completar formulários/cadastros ✅ COMPLETO
+- [x] Filtro por **categoria** no catálogo de produtos (aparece quando há categorias)
+- [x] Filtros no catálogo de modelos (categoria / material / tecnologia) + badge de versão no card
+- [x] Material (modal): campo **fornecedor** + **observação**
+- [x] Impressora (modal): **nº de série, data de aquisição, horas/dia, foto, perfil de energia**
+- [x] Fornecedor (modal): **categorias fornecidas (multi), condições de pagamento, endereço, observações**
+- [x] Cliente (modal): **canal de origem (select com opções), indicação**
+- [x] Registrar falha (modal): **foto da falha** (Storage RLS) + **responsável** (membro ativo do tenant)
 
 ### P3 — gestão e agregações
-- [ ] Clientes: colunas **última compra / total comprado / a receber** + **ficha do cliente** (hoje só modal)
+- [ ] ⭐ Clientes: colunas **última compra / total comprado / a receber** + **ficha do cliente** (hoje só modal)
 - [ ] Fornecedores: **última compra / total comprado**, **alertas de aumento de preço**, **histórico de preços**
 - [ ] Estoque: coluna **sugestão de compra** (qtd calculada: mínimo − disponível + fila)
 - [ ] Composição: botão **Importar** (modelos de composição por categoria) + coluna **fornecedor** por item
