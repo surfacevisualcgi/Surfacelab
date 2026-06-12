@@ -15,12 +15,14 @@ import {
   EstadoVazio, Etiqueta,
 } from '@/components/ui';
 import { GaleriaFotos } from '@/components/GaleriaFotos';
+import { EditorCores, type CorDisponivel } from '@/components/Cores';
 import { useAuth } from '@/auth/AuthProvider';
 
 interface ModeloCompleto {
   id: string;
   nome: string;
   fotos: string[];
+  cores: CorDisponivel[];
   codigo_interno: string | null;
   descricao: string | null;
   tecnologia: 'fdm' | 'resina';
@@ -74,6 +76,12 @@ export function PaginaModeloDetalhe() {
 
   async function salvarFotos(fotos: string[]) {
     const { error } = await supabase.from('modelo_3d').update({ fotos }).eq('id', id);
+    if (error) throw error;
+    qc.invalidateQueries({ queryKey: ['modelo_3d'] });
+  }
+
+  async function salvarCores(cores: CorDisponivel[]) {
+    const { error } = await supabase.from('modelo_3d').update({ cores }).eq('id', id);
     if (error) throw error;
     qc.invalidateQueries({ queryKey: ['modelo_3d'] });
   }
@@ -141,6 +149,16 @@ export function PaginaModeloDetalhe() {
               <Cartao><Dado rotulo={t('modelo.tecnologia')}><Etiqueta cor="roxo">{m.tecnologia.toUpperCase()}</Etiqueta></Dado></Cartao>
               <Cartao><Dado rotulo={t('modelo.probFalhaCurta')}>{(Number(m.probabilidade_falha) * 100).toFixed(0)}%</Dado></Cartao>
             </dl>
+            {/* cores disponíveis (decisão do domínio: um modelo imprime em N cores) */}
+            <Cartao>
+              <h2 className="mb-3 text-sm font-bold text-ink">{t('cores.titulo')}</h2>
+              <EditorCores
+                cores={m.cores ?? []}
+                prefixo={`modelos/${m.id}/cores`}
+                podeEditar={pode('modelos', 'editar')}
+                onChange={salvarCores}
+              />
+            </Cartao>
             {/* licença comercial */}
             <Cartao>
               <h2 className="mb-3 text-sm font-bold text-ink">{t('modelo.licenca')}</h2>

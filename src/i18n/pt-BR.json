@@ -538,6 +538,14 @@
     "passoProduto": "Monte um produto com composição",
     "passoCalculo": "Calcule o preço e gere um orçamento"
   },
+  "cores": {
+    "titulo": "Cores disponíveis",
+    "cor": "Cor",
+    "foto": "Foto",
+    "semCor": "Sem cor",
+    "nenhuma": "Nenhuma cor cadastrada — adicione as cores em que este modelo pode ser impresso.",
+    "nomePlaceholder": "Nome da cor (ex.: Preto fosco)"
+  },
   "fotos": {
     "adicionar": "Adicionar foto",
     "principal": "Foto principal",

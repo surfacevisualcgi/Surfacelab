@@ -4,11 +4,12 @@
  * (BOM com resumo lateral). Leitura mascarada via v_produto; custo "vivo" da
  * composição alimenta o cache custo_atual.
  */
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { enviarFoto, useTenantId } from '@/lib/fotos';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
 import { custoItemComposicao, SELECAO_COMPOSICAO, type ItemComposicao } from '@/lib/composicao';
 import { deCentavos, paraCentavos, percentual } from '@/lib/formato';
@@ -16,13 +17,17 @@ import {
   Abas, Acordeao, Botao, CabecalhoPagina, Campo, Carregando, Cartao, Dinheiro,
   Entrada, EstadoErro, EstadoVazio, Etiqueta, Modal, Selecao, TabelaDados,
 } from '@/components/ui';
-import { GaleriaFotos } from '@/components/GaleriaFotos';
+import { Foto, GaleriaFotos } from '@/components/GaleriaFotos';
+import { Swatch } from '@/components/Cores';
 import { useAuth } from '@/auth/AuthProvider';
 import type { ProdutoView } from './PaginaProdutos';
 
 type Aba = 'geral' | 'variacoes' | 'canais' | 'composicao';
 
-interface Variacao { id: string; nome: string; codigo: string | null; preco: number; estoque: number }
+interface Variacao {
+  id: string; nome: string; codigo: string | null; preco: number; estoque: number;
+  cor_hex: string | null; foto: string | null;
+}
 interface ProdutoCanal { id: string; canal_id: string; preco_praticado: number }
 interface Canal { id: string; nome: string; taxa_marketplace: number; taxa_pagamento: number; comissao: number }
 
@@ -180,14 +185,25 @@ export function PaginaProdutoDetalhe() {
   );
 }
 
-// ---------------------------------------------------------------- Variações
+// ------------------------------------------------- Variações (cor+foto, v2)
 function AbaVariacoes({ produtoId }: { produtoId: string }) {
   const { t } = useTranslation();
   const { pode, ativa } = useAuth();
   const qc = useQueryClient();
   const crud = useCrud('variacao');
+  const tenantId = useTenantId();
   const [editando, setEditando] = useState<Partial<Variacao> | null>(null);
+  const [corHex, setCorHex] = useState<string | null>(null);
+  const [fotoPath, setFotoPath] = useState<string | null>(null);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const inputFotoRef = useRef<HTMLInputElement>(null);
   const [erro, setErro] = useState<string | null>(null);
+
+  function abrir(v: Partial<Variacao>) {
+    setEditando(v);
+    setCorHex(v.cor_hex ?? null);
+    setFotoPath(v.foto ?? null);
+  }
 
   const lista = useQuery({
     queryKey: ['variacao', produtoId],
@@ -200,6 +216,20 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
     },
   });
 
+  async function anexarFoto(arquivos: FileList | null) {
+    if (!arquivos?.[0] || !tenantId) return;
+    setEnviandoFoto(true);
+    setErro(null);
+    try {
+      setFotoPath(await enviarFoto(tenantId, `produtos/${produtoId}/variacoes`, arquivos[0]));
+    } catch (e) {
+      setErro(mensagemErro(e));
+    } finally {
+      setEnviandoFoto(false);
+      if (inputFotoRef.current) inputFotoRef.current.value = '';
+    }
+  }
+
   async function salvar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editando) return;
@@ -210,6 +240,8 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
       codigo: (f.get('codigo') as string) || null,
       preco: paraCentavos(f.get('preco') as string),
       estoque: Number(f.get('estoque') || 0),
+      cor_hex: corHex,
+      foto: fotoPath,
     };
     try {
       if (editando.id) await crud.atualizar.mutateAsync({ id: editando.id, ...valores });
@@ -226,14 +258,35 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        {pode('produtos', 'editar') && <Botao onClick={() => setEditando({})}>+ {t('acoes.nova')}</Botao>}
+        {pode('produtos', 'editar') && <Botao onClick={() => abrir({})}>+ {t('acoes.nova')}</Botao>}
       </div>
       {(lista.data ?? []).length === 0 ? (
         <EstadoVazio mensagem={t('produto.semVariacoes')} />
       ) : (
         <TabelaDados<Variacao>
           colunas={[
-            { titulo: t('produto.variacao'), principal: true, render: (v) => <span className="font-semibold text-ink">{v.nome}</span> },
+            {
+              titulo: t('produto.variacao'),
+              principal: true,
+              render: (v) => (
+                <span className="flex items-center gap-2 font-semibold text-ink">
+                  {v.foto ? (
+                    <Foto path={v.foto} alt={v.nome} className="size-8 rounded-md object-cover" />
+                  ) : v.cor_hex ? (
+                    <Swatch hex={v.cor_hex} nome={v.nome} tamanho="size-5" />
+                  ) : null}
+                  {v.nome}
+                </span>
+              ),
+            },
+            {
+              titulo: t('cores.cor'),
+              render: (v) => v.cor_hex ? (
+                <span className="flex items-center gap-1.5 text-texto-2">
+                  <Swatch hex={v.cor_hex} nome={v.nome} /> {v.cor_hex}
+                </span>
+              ) : '—',
+            },
             { titulo: 'Código', render: (v) => v.codigo ?? '—' },
             { titulo: t('orcamento.total'), numerica: true, render: (v) => <Dinheiro centavos={v.preco} /> },
             { titulo: t('estoque.saldo'), numerica: true, render: (v) => v.estoque },
@@ -242,7 +295,7 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
           chave={(v) => v.id}
           acoes={(v) =>
             pode('produtos', 'editar') ? (
-              <Botao variante="fantasma" onClick={() => setEditando(v)}>{t('acoes.editar')}</Botao>
+              <Botao variante="fantasma" onClick={() => abrir(v)}>{t('acoes.editar')}</Botao>
             ) : null
           }
         />
@@ -264,6 +317,44 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
                 <Entrada name="estoque" type="number" min="0" defaultValue={editando.estoque ?? 0} />
               </Campo>
             </div>
+            {/* cor + foto da variação (v2) */}
+            <div className="grid grid-cols-2 gap-3">
+              <Campo rotulo={t('cores.cor')}>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="color"
+                    value={corHex ?? '#cccccc'}
+                    onChange={(e) => setCorHex(e.target.value)}
+                    aria-label={t('cores.cor')}
+                    className="size-9 shrink-0 cursor-pointer rounded-lg border border-borda bg-white p-1"
+                  />
+                  {corHex ? (
+                    <button type="button" onClick={() => setCorHex(null)}
+                      className="text-xs font-semibold text-texto-2 hover:text-erro">
+                      {t('cores.semCor')} ✕
+                    </button>
+                  ) : (
+                    <span className="text-xs text-texto-2">{t('cores.semCor')}</span>
+                  )}
+                </div>
+              </Campo>
+              <Campo rotulo={t('cores.foto')}>
+                <div className="flex items-center gap-2">
+                  {fotoPath && <Foto path={fotoPath} alt="" className="size-9 rounded-md object-cover" />}
+                  <Botao type="button" variante="secundario" disabled={enviandoFoto}
+                    className="!px-2.5 !py-1.5 !text-xs"
+                    onClick={() => inputFotoRef.current?.click()}>
+                    {enviandoFoto ? '…' : fotoPath ? t('acoes.editar') : `+ ${t('fotos.adicionar')}`}
+                  </Botao>
+                  {fotoPath && (
+                    <button type="button" onClick={() => setFotoPath(null)}
+                      className="text-xs text-texto-2 hover:text-erro">✕</button>
+                  )}
+                </div>
+              </Campo>
+            </div>
+            <input ref={inputFotoRef} type="file" accept="image/*" className="hidden"
+              onChange={(e) => anexarFoto(e.target.files)} />
             {erro && <p className="text-xs font-semibold text-erro">{erro}</p>}
             <div className="flex justify-end gap-2">
               <Botao type="button" variante="secundario" onClick={() => setEditando(null)}>{t('acoes.cancelar')}</Botao>

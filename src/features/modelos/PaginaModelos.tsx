@@ -11,6 +11,7 @@ import {
   Etiqueta, Modal, Selecao,
 } from '@/components/ui';
 import { FotoOuPlaceholder } from '@/components/GaleriaFotos';
+import { LinhaSwatches } from '@/components/Cores';
 import { useAuth } from '@/auth/AuthProvider';
 import type { Material } from '../cadastros/PaginaCadastros';
 
@@ -121,6 +122,9 @@ export function PaginaModelos() {
                   <p className="mt-1 text-[11px] text-texto-2">
                     {duracao(m.tempo_impressao_min)} · {pesoTotal.toLocaleString()}{un} · {(Number(m.probabilidade_falha) * 100).toFixed(0)}% falha
                   </p>
+                  {(m.cores ?? []).length > 0 && (
+                    <div className="mt-1.5"><LinhaSwatches cores={m.cores} /></div>
+                  )}
                   <div className="mt-auto flex items-center justify-between gap-1 pt-2">
                     <Botao variante="fantasma" className="!px-1.5 !py-1 !text-[11px]"
                       onClick={() => navigate(`/calculadora?modelo=${m.id}`)}>
