@@ -8,13 +8,20 @@ import { useTranslation } from 'react-i18next';
 import { enviarFoto, removerFoto, useFotoQuery, useTenantId } from '@/lib/fotos';
 import { mensagemErro } from '@/lib/dados';
 
+function isFotoPublica(path: string | null | undefined) {
+  if (!path) return false;
+  return path.startsWith('/') || path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:');
+}
+
 export function Foto({ path, alt = '', className = '' }: {
   path: string | null | undefined;
   alt?: string;
   className?: string;
 }) {
-  const foto = useFotoQuery(path);
+  const publica = isFotoPublica(path);
+  const foto = useFotoQuery(publica ? null : path);
   if (!path) return null;
+  if (publica) return <img src={path} alt={alt} className={className} loading="lazy" />;
   if (foto.data) return <img src={foto.data} alt={alt} className={className} loading="lazy" />;
   if (foto.isError) return <div className={`flex items-center justify-center bg-surface-2 text-[10px] font-bold text-texto-2 ${className}`}>!</div>;
   return <div className={`animate-pulse bg-surface-2 ${className}`} />;
@@ -26,7 +33,9 @@ export function FotoOuPlaceholder({ path, alt = '', className = '' }: {
   alt?: string;
   className?: string;
 }) {
-  const foto = useFotoQuery(path);
+  const publica = isFotoPublica(path);
+  const foto = useFotoQuery(publica ? null : path);
+  if (path && publica) return <img src={path} alt={alt} className={className} loading="lazy" />;
   if (path && foto.data) return <img src={foto.data} alt={alt} className={className} loading="lazy" />;
   if (path && foto.isError) {
     return (
