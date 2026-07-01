@@ -3,8 +3,8 @@
  * apenas como acento (item ativo, logo). Responsiva: sidebar vira gaveta no
  * mobile. Estrutura segue os protótipos v2; pele é Surface Labs.
  */
-import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useState, type CSSProperties } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/auth/AuthProvider';
 import { Logo } from '@/components/ui';
@@ -31,6 +31,9 @@ const ICONES: Record<string, string> = {
   cifrao: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 15.5V19h-2v-1.5a3.6 3.6 0 0 1-2.8-2.1l1.8-.8A2 2 0 0 0 12 16c.9 0 1.6-.5 1.6-1.2s-.5-1-1.9-1.5c-1.8-.6-3.2-1.3-3.2-3 0-1.4 1-2.5 2.5-2.9V6h2v1.4a3.3 3.3 0 0 1 2.4 1.8l-1.7.8A1.8 1.8 0 0 0 12 9c-.8 0-1.4.4-1.4 1s.6 1 2 1.5c1.9.6 3.1 1.4 3.1 3 0 1.5-1.1 2.7-2.7 3Z',
   engren: 'M19.4 13a7.5 7.5 0 0 0 0-2l2-1.5-2-3.5-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.3 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7.4 7.4 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5ZM13 15a3 3 0 1 1 3-3 3 3 0 0 1-3 3Z',
   lista: 'M4 6h2v2H4V6Zm4 0h12v2H8V6ZM4 11h2v2H4v-2Zm4 0h12v2H8v-2ZM4 16h2v2H4v-2Zm4 0h12v2H8v-2Z',
+  spark: 'M12 2l1.7 5.1L19 9l-5.3 1.9L12 16l-1.7-5.1L5 9l5.3-1.9L12 2Zm6 12 1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3ZM5 13l.8 2.2L8 16l-2.2.8L5 19l-.8-2.2L2 16l2.2-.8L5 13Z',
+  imagem: 'M4 5h16v14H4V5Zm2 2v8.5l3.5-3.5 2.5 2.5 3.5-4.5L18 13.2V7H6Zm2.5 3.5A1.5 1.5 0 1 0 8.5 9a1.5 1.5 0 0 0 0 1.5Z',
+  radar: 'M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V3Zm0 4a5 5 0 1 0 5 5h-2a3 3 0 1 1-3-3V7Zm8-4 1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z',
 };
 
 function Icone({ d }: { d: string }) {
@@ -47,6 +50,10 @@ export function AppShell() {
   const [menuAberto, setMenuAberto] = useState(false);
   const [empresasAberto, setEmpresasAberto] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const telaCheia = location.pathname.startsWith('/modelos') || location.pathname.startsWith('/estoque') || location.pathname.startsWith('/cadastros') || location.pathname.startsWith('/pedidos') || location.pathname.startsWith('/clientes') || location.pathname.startsWith('/orcamentos') || location.pathname.startsWith('/financeiro') || location.pathname.startsWith('/calculadora') || location.pathname.startsWith('/creator-lab');
+  const creatorLabAtivo = location.pathname.startsWith('/creator-lab');
+  const [creatorLabAberto, setCreatorLabAberto] = useState(creatorLabAtivo);
 
   const itens: ItemNav[] = [
     { para: '/', rotulo: t('nav.visaoGeral'), modulo: 'relatorios', icone: ICONES.casa },
@@ -57,14 +64,17 @@ export function AppShell() {
     { para: '/pedidos', rotulo: t('nav.pedidos'), modulo: 'pedidos', icone: ICONES.kanban },
     { para: '/estoque', rotulo: t('nav.estoque'), modulo: 'estoque', icone: ICONES.estoque },
     { para: '/clientes', rotulo: t('nav.clientes'), modulo: 'clientes', icone: ICONES.pessoas },
-    { para: '/fornecedores', rotulo: t('nav.fornecedores'), modulo: 'fornecedores', icone: ICONES.caminhao },
     { para: '/financeiro', rotulo: t('nav.financeiro'), modulo: 'financeiro', icone: ICONES.cifrao },
-    { para: '/fiscal', rotulo: t('nav.fiscal'), modulo: 'fiscal', icone: ICONES.doc },
-    { para: '/impressoras', rotulo: t('nav.impressoras'), modulo: 'configuracoes', icone: ICONES.estoque },
     { para: '/cadastros', rotulo: t('nav.cadastros'), modulo: 'configuracoes', icone: ICONES.lista },
     { para: '/configuracoes', rotulo: t('nav.configuracoes'), modulo: 'configuracoes', icone: ICONES.engren },
   ];
   const visiveis = itens.filter((i) => i.para === '/' || pode(i.modulo));
+  const itensCreatorLab: ItemNav[] = [
+    { para: '/creator-lab/anuncios', rotulo: 'Anúncios', modulo: 'relatorios', icone: ICONES.spark },
+    { para: '/creator-lab/imagens', rotulo: 'Imagens', modulo: 'relatorios', icone: ICONES.imagem },
+    { para: '/creator-lab/radar', rotulo: 'Radar', modulo: 'relatorios', icone: ICONES.radar },
+  ];
+  const creatorLabVisiveis = itensCreatorLab.filter((i) => pode(i.modulo));
 
   const iniciais = (session?.user?.user_metadata?.nome_exibicao as string | undefined)
     ?.split(' ')
@@ -72,6 +82,10 @@ export function AppShell() {
     .slice(0, 2)
     .join('')
     .toUpperCase() ?? session?.user?.email?.[0]?.toUpperCase() ?? '?';
+  const sidebarStyle = {
+    '--sidebar-bg': ativa?.tenant.sidebar_bg_color ?? '#0d0d0d',
+    '--sidebar-text': ativa?.tenant.sidebar_text_color ?? '#ffffff',
+  } as CSSProperties;
 
   const nav = (
     <nav className="flex flex-col gap-0.5 px-2">
@@ -84,8 +98,8 @@ export function AppShell() {
           className={({ isActive }) =>
             `flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors ${
               isActive
-                ? 'grad-acento text-white shadow-sm'
-                : 'text-white/65 hover:bg-white/10 hover:text-white'
+                ? 'sidebar-link-active grad-acento shadow-sm'
+                : 'sidebar-link'
             }`
           }
         >
@@ -93,19 +107,69 @@ export function AppShell() {
           {item.rotulo}
         </NavLink>
       ))}
+      {creatorLabVisiveis.length > 0 && (
+        <div className="mt-1">
+          <button
+            type="button"
+            onClick={() => setCreatorLabAberto((aberto) => !aberto)}
+            aria-expanded={creatorLabAberto}
+            className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-semibold transition-colors ${
+              creatorLabAtivo
+                ? 'sidebar-link-active grad-acento shadow-sm'
+                : 'sidebar-link'
+            }`}
+          >
+            <Icone d={ICONES.spark} />
+            <span className="min-w-0 flex-1">Creator Lab</span>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className={`shrink-0 transition-transform ${creatorLabAberto ? 'rotate-180' : ''}`}
+              aria-hidden
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          {creatorLabAberto && (
+            <div className="ml-4 mt-1 flex flex-col gap-0.5 border-l sidebar-border pl-2">
+              {creatorLabVisiveis.map((item) => (
+                <NavLink
+                  key={item.para}
+                  to={item.para}
+                  onClick={() => setMenuAberto(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                      isActive
+                        ? 'sidebar-link-active bg-white/10'
+                        : 'sidebar-link'
+                    }`
+                  }
+                >
+                  <Icone d={item.icone} />
+                  {item.rotulo}
+                </NavLink>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   );
 
   return (
     <div className="flex min-h-dvh bg-surface-2">
       {/* sidebar desktop — rodapé com plano e usuário (estrutura v2) */}
-      <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col bg-ink py-4 lg:flex">
+      <aside className="sidebar-theme sticky top-0 hidden h-dvh w-56 shrink-0 flex-col py-4 lg:flex" style={sidebarStyle}>
         <div className="mb-5 px-4">
           <Logo claro tamanho={26} />
         </div>
         <div className="flex-1 overflow-y-auto">{nav}</div>
-        <div className="mt-3 border-t border-white/10 px-4 pt-3">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-white/40">
+        <div className="sidebar-border mt-3 border-t px-4 pt-3">
+          <p className="sidebar-muted text-[10px] font-bold uppercase tracking-wide">
             {t('config.planoAtual')}
           </p>
           <p className="text-xs font-bold grad-texto">
@@ -117,10 +181,10 @@ export function AppShell() {
               {iniciais}
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-[11px] font-semibold text-white/85">
+              <span className="sidebar-soft block truncate text-[11px] font-semibold">
                 {(session?.user?.user_metadata?.nome_exibicao as string | undefined) ?? session?.user?.email}
               </span>
-              <span className="block text-[10px] text-white/45">
+              <span className="sidebar-muted block text-[10px]">
                 {t(`config.papelLabel.${ativa?.papel ?? 'leitura'}`)}
               </span>
             </span>
@@ -133,7 +197,8 @@ export function AppShell() {
         <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setMenuAberto(false)}>
           <div className="absolute inset-0 bg-ink/40" />
           <aside
-            className="absolute left-0 top-0 h-full w-64 bg-ink py-4"
+            className="sidebar-theme absolute left-0 top-0 h-full w-64 py-4"
+            style={sidebarStyle}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 px-4">
@@ -223,7 +288,7 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl flex-1 p-4 pb-24 sm:p-6 lg:pb-6">
+        <main className={`mx-auto w-full flex-1 p-4 pb-24 sm:p-6 lg:pb-6 ${telaCheia ? 'max-w-[calc(100vw-3rem)] 2xl:px-8' : 'max-w-6xl'}`}>
           <Outlet />
         </main>
 

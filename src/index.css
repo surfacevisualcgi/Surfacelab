@@ -94,3 +94,37 @@
   background-clip: text;
   color: transparent;
 }
+
+@layer components {
+  .sidebar-theme {
+    --sidebar-bg: var(--color-ink);
+    --sidebar-text: #ffffff;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+  }
+
+  .sidebar-link {
+    color: color-mix(in srgb, var(--sidebar-text) 65%, transparent);
+  }
+
+  .sidebar-link:hover {
+    background: color-mix(in srgb, var(--sidebar-text) 10%, transparent);
+    color: var(--sidebar-text);
+  }
+
+  .sidebar-link-active {
+    color: var(--sidebar-text);
+  }
+
+  .sidebar-muted {
+    color: color-mix(in srgb, var(--sidebar-text) 42%, transparent);
+  }
+
+  .sidebar-soft {
+    color: color-mix(in srgb, var(--sidebar-text) 85%, transparent);
+  }
+
+  .sidebar-border {
+    border-color: color-mix(in srgb, var(--sidebar-text) 12%, transparent);
+  }
+}

@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { useLista, mensagemErro } from '@/lib/dados';
 import { deCentavos, moeda, paraCentavos } from '@/lib/formato';
-import { Botao, Campo, Entrada, Modal, Selecao } from '@/components/ui';
+import { Botao, Campo, Entrada, EntradaDinheiro, Modal, Selecao } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 
 interface ClienteRef { id: string; nome: string; anonimizado: boolean }
@@ -230,7 +230,7 @@ export function ModalNovoPedido({ aberto, onFechar, onCriado }: {
                       onChange={(e) => setItem(i, { quantidade: Number(e.target.value) })} />
                   </Campo>
                   <Campo rotulo={t('novoPedido.precoUnit')}>
-                    <Entrada inputMode="decimal" value={it.preco} placeholder="0,00"
+                    <EntradaDinheiro value={it.preco}
                       onChange={(e) => setItem(i, { preco: e.target.value })} />
                   </Campo>
                   <button type="button" aria-label={t('acoes.excluir')}
@@ -261,7 +261,7 @@ export function ModalNovoPedido({ aberto, onFechar, onCriado }: {
       {passo === 2 && (
         <div className="grid grid-cols-2 gap-3">
           <Campo rotulo={t('novoPedido.entrada')} dica={t('novoPedido.entradaDica')}>
-            <Entrada inputMode="decimal" value={pag.entrada} placeholder="0,00"
+            <EntradaDinheiro value={pag.entrada}
               onChange={(e) => setPag({ ...pag, entrada: e.target.value })} />
           </Campo>
           <Campo rotulo={t('novoPedido.parcelas')}>
@@ -281,7 +281,7 @@ export function ModalNovoPedido({ aberto, onFechar, onCriado }: {
               onChange={(e) => setPag({ ...pag, prazo_entrega: e.target.value })} />
           </Campo>
           <Campo rotulo={t('novoPedido.freteCobrado')}>
-            <Entrada inputMode="decimal" value={pag.frete} placeholder="0,00"
+            <EntradaDinheiro value={pag.frete}
               onChange={(e) => setPag({ ...pag, frete: e.target.value })} />
           </Campo>
           <Campo rotulo={t('novoPedido.observacoes')} className="col-span-2">

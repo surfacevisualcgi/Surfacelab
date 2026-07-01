@@ -26,7 +26,16 @@ interface ModeloCompleto {
   fotos: string[];
   cores: CorDisponivel[];
   codigo_interno: string | null;
+  tags: string[];
   descricao: string | null;
+  dimensoes: string | null;
+  largura_mm: number | null;
+  profundidade_mm: number | null;
+  altura_mm: number | null;
+  volume_mm3: number | null;
+  arquivo_original: string | null;
+  arquivo_original_nome: string | null;
+  arquivo_original_tamanho_bytes: number | null;
   tecnologia: 'fdm' | 'resina';
   origem: string;
   autor: string | null;
@@ -109,6 +118,16 @@ export function PaginaModeloDetalhe() {
   const m = modelo.data;
   const un = m.tecnologia === 'resina' ? 'ml' : 'g';
   const pesoTotal = Number(m.peso_peca_g) + Number(m.peso_suporte_g) + Number(m.peso_purga_g) + Number(m.peso_desperdicio_g);
+  const dimensoes = dimensoesModelo(m);
+  const itensProntidao = [
+    { rotulo: 'Foto', ok: (m.fotos ?? []).length > 0 },
+    { rotulo: 'Dimensoes', ok: !!dimensoes },
+    { rotulo: 'Material', ok: !!m.material },
+    { rotulo: 'Impressora', ok: !!m.impressora },
+    { rotulo: 'Peso', ok: pesoTotal > 0 },
+    { rotulo: 'Tempo', ok: Number(m.tempo_impressao_min) > 0 },
+  ];
+  const pendencias = itensProntidao.filter((item) => !item.ok);
 
   return (
     <div>
@@ -157,13 +176,30 @@ export function PaginaModeloDetalhe() {
           </div>
           <div className="space-y-4">
             {/* 4 dados-chave de impressão (v2) */}
-            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               <Cartao><Dado rotulo={t('modelo.tempoCurto')}>{duracao(m.tempo_impressao_min)}</Dado></Cartao>
               <Cartao><Dado rotulo={t('modelo.pesoTotal')}>{pesoTotal.toLocaleString()}{un}</Dado></Cartao>
+              <Cartao><Dado rotulo={t('novoProduto.dimensoes')}>{dimensoes ?? '-'}</Dado></Cartao>
               <Cartao><Dado rotulo={t('modelo.tecnologia')}><Etiqueta cor="roxo">{m.tecnologia.toUpperCase()}</Etiqueta></Dado></Cartao>
               <Cartao><Dado rotulo={t('modelo.probFalhaCurta')}>{(Number(m.probabilidade_falha) * 100).toFixed(0)}%</Dado></Cartao>
             </dl>
             {/* cores disponíveis (decisão do domínio: um modelo imprime em N cores) */}
+            <Cartao>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-sm font-bold text-ink">Prontidao do modelo</h2>
+                <Etiqueta cor={pendencias.length === 0 ? 'verde' : 'amarelo'}>
+                  {pendencias.length === 0 ? 'Pronto' : `${pendencias.length} pendente(s)`}
+                </Etiqueta>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {itensProntidao.map((item) => (
+                  <div key={item.rotulo} className="flex items-center gap-2 rounded-lg border border-borda bg-surface-2 px-3 py-2 text-xs font-bold text-texto">
+                    <span className={`size-2.5 rounded-full ${item.ok ? 'bg-ok' : 'bg-alerta'}`} />
+                    {item.rotulo}
+                  </div>
+                ))}
+              </div>
+            </Cartao>
             <Cartao>
               <h2 className="mb-3 text-sm font-bold text-ink">{t('cores.titulo')}</h2>
               <EditorCores
@@ -189,6 +225,16 @@ export function PaginaModeloDetalhe() {
                 <p className="text-sm text-texto-2">{m.descricao}</p>
               </Cartao>
             )}
+            {(m.tags ?? []).length > 0 && (
+              <Cartao>
+                <h2 className="mb-3 text-sm font-bold text-ink">Tags</h2>
+                <div className="flex flex-wrap gap-1.5">
+                  {(m.tags ?? []).map((tag) => (
+                    <Etiqueta key={tag} cor="azul">{tag}</Etiqueta>
+                  ))}
+                </div>
+              </Cartao>
+            )}
           </div>
         </div>
       )}
@@ -200,6 +246,9 @@ export function PaginaModeloDetalhe() {
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Dado rotulo={t('modelo.impressoraRecomendada')}>{m.impressora?.nome ?? '—'}</Dado>
               <Dado rotulo={t('modelo.materialRecomendado')}>{m.material?.nome ?? '—'}</Dado>
+              <Dado rotulo={t('novoProduto.dimensoes')}>{dimensoes ?? '-'}</Dado>
+              <Dado rotulo="Arquivo original">{m.arquivo_original_nome ?? '-'}</Dado>
+              <Dado rotulo="Volume STL">{m.volume_mm3 ? `${Math.round(Number(m.volume_mm3)).toLocaleString('pt-BR')} mm3` : '-'}</Dado>
               <Dado rotulo={t('modelo.perfilFatiamento')}>{m.perfil_fatiamento ?? '—'}</Dado>
               <Dado rotulo="Cor">{m.cor ?? '—'}</Dado>
               <Dado rotulo={t('formModelo.bico')}>{m.bico ?? '—'}</Dado>
@@ -275,4 +324,13 @@ export function PaginaModeloDetalhe() {
       />
     </div>
   );
+}
+
+function dimensoesModelo(modelo: Pick<ModeloCompleto, 'largura_mm' | 'profundidade_mm' | 'altura_mm' | 'dimensoes'>) {
+  const { largura_mm, profundidade_mm, altura_mm } = modelo;
+  if (largura_mm && profundidade_mm && altura_mm) {
+    const fmt = (valor: number) => Number(valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+    return `${fmt(largura_mm)} x ${fmt(profundidade_mm)} x ${fmt(altura_mm)} mm`;
+  }
+  return modelo.dimensoes || null;
 }

@@ -15,7 +15,7 @@ import { custoItemComposicao, SELECAO_COMPOSICAO, type ItemComposicao } from '@/
 import { deCentavos, paraCentavos, percentual } from '@/lib/formato';
 import {
   Abas, Acordeao, Botao, CabecalhoPagina, Campo, Carregando, Cartao, Dinheiro,
-  Entrada, EstadoErro, EstadoVazio, Etiqueta, Modal, Selecao, TabelaDados,
+  Entrada, EntradaDinheiro, EstadoErro, EstadoVazio, Etiqueta, Modal, Selecao, TabelaDados,
 } from '@/components/ui';
 import { Foto, GaleriaFotos } from '@/components/GaleriaFotos';
 import { Swatch } from '@/components/Cores';
@@ -27,7 +27,20 @@ type Aba = 'geral' | 'variacoes' | 'canais' | 'composicao';
 
 interface Variacao {
   id: string; nome: string; codigo: string | null; preco: number; estoque: number;
-  cor_hex: string | null; foto: string | null;
+  cor_hex: string | null; cor_nome: string | null; foto: string | null; fotos: string[];
+  modelo_id: string | null; tamanho: string | null; descricao: string | null;
+  dimensoes: string | null; peso_g: number | null; status: string;
+  modelo?: ModeloVariacaoRef | null;
+}
+interface ModeloVariacaoRef {
+  id: string;
+  nome: string;
+  codigo_interno: string | null;
+  tempo_impressao_min: number;
+  peso_peca_g: number;
+  peso_suporte_g: number;
+  peso_purga_g: number;
+  peso_desperdicio_g: number;
 }
 interface ProdutoCanal { id: string; canal_id: string; preco_praticado: number }
 interface Canal { id: string; nome: string; taxa_marketplace: number; taxa_pagamento: number; comissao: number }
@@ -236,7 +249,7 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
   const tenantId = useTenantId();
   const [editando, setEditando] = useState<Partial<Variacao> | null>(null);
   const [corHex, setCorHex] = useState<string | null>(null);
-  const [fotoPath, setFotoPath] = useState<string | null>(null);
+  const [fotos, setFotos] = useState<string[]>([]);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const inputFotoRef = useRef<HTMLInputElement>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -244,7 +257,7 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
   function abrir(v: Partial<Variacao>) {
     setEditando(v);
     setCorHex(v.cor_hex ?? null);
-    setFotoPath(v.foto ?? null);
+    setFotos(v.fotos?.length ? v.fotos : v.foto ? [v.foto] : []);
   }
 
   const lista = useQuery({
@@ -252,10 +265,20 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
     enabled: !!ativa,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('variacao').select('*').eq('produto_id', produtoId).is('deleted_at', null).order('nome');
+        .from('variacao')
+        .select('*, modelo:modelo_id (id, nome, codigo_interno, tempo_impressao_min, peso_peca_g, peso_suporte_g, peso_purga_g, peso_desperdicio_g)')
+        .eq('produto_id', produtoId)
+        .is('deleted_at', null)
+        .order('nome');
       if (error) throw error;
       return data as Variacao[];
     },
+  });
+
+  const modelos = useLista<ModeloVariacaoRef>('modelo_3d', {
+    ordem: 'nome',
+    desc: false,
+    selecao: 'id, nome, codigo_interno, tempo_impressao_min, peso_peca_g, peso_suporte_g, peso_purga_g, peso_desperdicio_g',
   });
 
   async function anexarFoto(arquivos: FileList | null) {
@@ -263,12 +286,23 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
     setEnviandoFoto(true);
     setErro(null);
     try {
-      setFotoPath(await enviarFoto(tenantId, `produtos/${produtoId}/variacoes`, arquivos[0]));
+      const path = await enviarFoto(tenantId, `produtos/${produtoId}/variacoes`, arquivos[0]);
+      setFotos((atuais) => [...atuais, path]);
     } catch (e) {
       setErro(mensagemErro(e));
     } finally {
       setEnviandoFoto(false);
       if (inputFotoRef.current) inputFotoRef.current.value = '';
+    }
+  }
+
+  async function excluir(v: Variacao) {
+    if (!window.confirm(`Excluir a variacao "${v.nome}"?`)) return;
+    try {
+      await crud.excluir.mutateAsync(v.id);
+      qc.invalidateQueries({ queryKey: ['variacao', produtoId] });
+    } catch (err) {
+      setErro(mensagemErro(err));
     }
   }
 
@@ -280,10 +314,18 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
       produto_id: produtoId,
       nome: f.get('nome') as string,
       codigo: (f.get('codigo') as string) || null,
+      modelo_id: (f.get('modelo_id') as string) || null,
+      tamanho: (f.get('tamanho') as string) || null,
       preco: paraCentavos(f.get('preco') as string),
       estoque: Number(f.get('estoque') || 0),
+      status: f.get('status') as string,
+      cor_nome: (f.get('cor_nome') as string) || null,
       cor_hex: corHex,
-      foto: fotoPath,
+      foto: fotos[0] ?? null,
+      fotos,
+      dimensoes: (f.get('dimensoes') as string) || null,
+      peso_g: f.get('peso_g') ? Number(f.get('peso_g')) : null,
+      descricao: (f.get('descricao') as string) || null,
     };
     try {
       if (editando.id) await crud.atualizar.mutateAsync({ id: editando.id, ...valores });
@@ -297,11 +339,19 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
   }
 
   if (lista.isLoading) return <Carregando />;
+  const tamanhos = Array.from(new Set((lista.data ?? []).map((v) => v.tamanho).filter(Boolean))).join(', ');
   return (
     <div>
-      <div className="mb-3 flex justify-end">
-        {pode('produtos', 'editar') && <Botao onClick={() => abrir({})}>+ {t('acoes.nova')}</Botao>}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-bold text-ink">SKUs do produto</p>
+          <p className="text-xs text-texto-2">
+            {(lista.data ?? []).length} variacoes{tamanhos ? ` · tamanhos: ${tamanhos}` : ''}
+          </p>
+        </div>
+        {pode('produtos', 'editar') && <Botao onClick={() => abrir({ status: 'ativo' })}>+ {t('acoes.nova')}</Botao>}
       </div>
+      {erro && <p className="mb-3 text-xs font-semibold text-erro">{erro}</p>}
       {(lista.data ?? []).length === 0 ? (
         <EstadoVazio mensagem={t('produto.semVariacoes')} />
       ) : (
@@ -312,24 +362,41 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
               principal: true,
               render: (v) => (
                 <span className="flex items-center gap-2 font-semibold text-ink">
-                  {v.foto ? (
-                    <Foto path={v.foto} alt={v.nome} className="size-8 rounded-md object-cover" />
+                  {(v.fotos?.[0] ?? v.foto) ? (
+                    <Foto path={v.fotos?.[0] ?? v.foto!} alt={v.nome} className="size-9 rounded-md object-cover" />
                   ) : v.cor_hex ? (
                     <Swatch hex={v.cor_hex} nome={v.nome} tamanho="size-5" />
                   ) : null}
-                  {v.nome}
+                  <span>
+                    {v.nome}
+                    <span className="block text-[11px] font-medium text-texto-2">
+                      {[v.codigo, v.status !== 'ativo' ? v.status : null].filter(Boolean).join(' · ') || 'SKU sem codigo'}
+                    </span>
+                  </span>
                 </span>
               ),
             },
+            { titulo: 'Tamanho', render: (v) => v.tamanho ?? '-' },
             {
               titulo: t('cores.cor'),
               render: (v) => v.cor_hex ? (
                 <span className="flex items-center gap-1.5 text-texto-2">
-                  <Swatch hex={v.cor_hex} nome={v.nome} /> {v.cor_hex}
+                  <Swatch hex={v.cor_hex} nome={v.cor_nome ?? v.nome} /> {v.cor_nome ?? v.cor_hex}
                 </span>
               ) : '—',
             },
             { titulo: 'Código', render: (v) => v.codigo ?? '—' },
+            {
+              titulo: 'Modelo 3D',
+              render: (v) => v.modelo ? (
+                <span>
+                  {v.modelo.nome}
+                  <span className="block text-[11px] text-texto-2">
+                    {Math.round(Number(v.modelo.tempo_impressao_min) / 60)}h · {pesoModelo(v.modelo).toLocaleString('pt-BR')}g
+                  </span>
+                </span>
+              ) : '-',
+            },
             { titulo: t('orcamento.total'), numerica: true, render: (v) => <Dinheiro centavos={v.preco} /> },
             { titulo: t('estoque.saldo'), numerica: true, render: (v) => v.estoque },
           ]}
@@ -337,30 +404,58 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
           chave={(v) => v.id}
           acoes={(v) =>
             pode('produtos', 'editar') ? (
-              <Botao variante="fantasma" onClick={() => abrir(v)}>{t('acoes.editar')}</Botao>
+              <span className="whitespace-nowrap">
+                <Botao variante="fantasma" onClick={() => abrir(v)}>{t('acoes.editar')}</Botao>
+                <Botao variante="fantasma" onClick={() => excluir(v)}>Excluir</Botao>
+              </span>
             ) : null
           }
         />
       )}
-      <Modal aberto={!!editando} titulo={t('produto.variacao')} onFechar={() => setEditando(null)}>
+      <Modal aberto={!!editando} titulo="Variacao / SKU" onFechar={() => setEditando(null)} largura="max-w-2xl">
         {editando && (
           <form onSubmit={salvar} className="space-y-3">
-            <Campo rotulo={t('produto.variacao')} dica="Ex.: Branco 20cm, Kit com 2">
+            <Campo rotulo="Nome da variacao" dica="Ex.: Canelado reto, Diagonal fina, Tampa com coracao">
               <Entrada name="nome" required defaultValue={editando.nome ?? ''} />
             </Campo>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <Campo rotulo="Código">
                 <Entrada name="codigo" defaultValue={editando.codigo ?? ''} />
               </Campo>
-              <Campo rotulo="Preço (R$)">
-                <Entrada name="preco" inputMode="decimal" defaultValue={deCentavos(editando.preco ?? 0)} />
+              <Campo rotulo="Tamanho">
+                <Entrada name="tamanho" defaultValue={editando.tamanho ?? ''} placeholder="P, M, G, GG" />
+              </Campo>
+              <Campo rotulo={t('produto.precoPraticado')}>
+                <EntradaDinheiro name="preco" defaultCentavos={editando.preco ?? 0} />
               </Campo>
               <Campo rotulo={t('estoque.saldo')}>
                 <Entrada name="estoque" type="number" min="0" defaultValue={editando.estoque ?? 0} />
               </Campo>
             </div>
             {/* cor + foto da variação (v2) */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <Campo rotulo="Modelo 3D tecnico" dica="Este modelo alimenta custo, tempo, peso e producao deste SKU.">
+                <Selecao name="modelo_id" defaultValue={editando.modelo_id ?? ''}>
+                  <option value="">-</option>
+                  {(modelos.data ?? []).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {[m.codigo_interno, m.nome].filter(Boolean).join(' · ')}
+                    </option>
+                  ))}
+                </Selecao>
+              </Campo>
+              <Campo rotulo="Status">
+                <Selecao name="status" defaultValue={editando.status ?? 'ativo'}>
+                  <option value="ativo">Ativo</option>
+                  <option value="rascunho">Rascunho</option>
+                  <option value="arquivado">Arquivado</option>
+                </Selecao>
+              </Campo>
+            </div>
             <div className="grid grid-cols-2 gap-3">
+              <Campo rotulo="Nome da cor">
+                <Entrada name="cor_nome" defaultValue={editando.cor_nome ?? ''} placeholder="Rosa, Branco, Dourado..." />
+              </Campo>
               <Campo rotulo={t('cores.cor')}>
                 <div className="flex items-center gap-1.5">
                   <input
@@ -382,19 +477,35 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
               </Campo>
               <Campo rotulo={t('cores.foto')}>
                 <div className="flex items-center gap-2">
-                  {fotoPath && <Foto path={fotoPath} alt="" className="size-9 rounded-md object-cover" />}
+                  {fotos[0] && <Foto path={fotos[0]} alt="" className="size-9 rounded-md object-cover" />}
                   <Botao type="button" variante="secundario" disabled={enviandoFoto}
                     className="!px-2.5 !py-1.5 !text-xs"
                     onClick={() => inputFotoRef.current?.click()}>
-                    {enviandoFoto ? '…' : fotoPath ? t('acoes.editar') : `+ ${t('fotos.adicionar')}`}
+                    {enviandoFoto ? '...' : `+ ${t('fotos.adicionar')}`}
                   </Botao>
-                  {fotoPath && (
-                    <button type="button" onClick={() => setFotoPath(null)}
+                  {fotos.length > 0 && (
+                    <button type="button" onClick={() => setFotos([])}
                       className="text-xs text-texto-2 hover:text-erro">✕</button>
                   )}
                 </div>
               </Campo>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Campo rotulo={t('novoProduto.dimensoes')}>
+                <Entrada name="dimensoes" defaultValue={editando.dimensoes ?? ''} placeholder="12 x 12 x 10 cm" />
+              </Campo>
+              <Campo rotulo={t('novoProduto.peso')}>
+                <Entrada name="peso_g" type="number" min="0" step="any" defaultValue={editando.peso_g ?? ''} />
+              </Campo>
+            </div>
+            <Campo rotulo={t('formModelo.descricao')}>
+              <textarea
+                name="descricao"
+                rows={2}
+                defaultValue={editando.descricao ?? ''}
+                className="w-full rounded-lg border border-borda bg-white px-3 py-2 text-sm"
+              />
+            </Campo>
             <input ref={inputFotoRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => anexarFoto(e.target.files)} />
             {erro && <p className="text-xs font-semibold text-erro">{erro}</p>}
@@ -406,6 +517,15 @@ function AbaVariacoes({ produtoId }: { produtoId: string }) {
         )}
       </Modal>
     </div>
+  );
+}
+
+function pesoModelo(modelo: ModeloVariacaoRef) {
+  return (
+    Number(modelo.peso_peca_g) +
+    Number(modelo.peso_suporte_g) +
+    Number(modelo.peso_purga_g) +
+    Number(modelo.peso_desperdicio_g)
   );
 }
 
@@ -714,8 +834,8 @@ function AbaComposicao({ produtoId, itens, total, custosVisiveis, aoMudar }: {
                 <Campo rotulo="Descrição">
                   <Entrada name="descricao" required defaultValue={editando.descricao ?? ''} />
                 </Campo>
-                <Campo rotulo="Custo (R$)">
-                  <Entrada name="custo_manual" inputMode="decimal" defaultValue={deCentavos(Number(editando.custo_manual ?? 0))} />
+                <Campo rotulo={t('produto.custoAtual')}>
+                  <EntradaDinheiro name="custo_manual" defaultCentavos={Number(editando.custo_manual ?? 0)} />
                 </Campo>
               </div>
             )}

@@ -8,13 +8,14 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { mensagemErro } from '@/lib/dados';
 import {
-  Botao, CabecalhoPagina, Campo, Carregando, Cartao, Entrada, Etiqueta,
+  Botao, CabecalhoPagina, Campo, Carregando, Cartao, Entrada, Etiqueta, Selecao,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
+import { IDIOMAS, type Idioma } from '@/i18n';
 
 export function PaginaConta() {
   const { t } = useTranslation();
-  const { session, memberships, ativa, trocarEmpresa } = useAuth();
+  const { session, memberships, ativa, trocarEmpresa, idioma, definirIdioma } = useAuth();
   const [msg, setMsg] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -68,6 +69,19 @@ export function PaginaConta() {
             </Campo>
             <Botao type="submit">{t('acoes.salvar')}</Botao>
           </form>
+
+          <div className="mt-4 border-t border-borda pt-4">
+            <Campo rotulo={t('conta.idioma')} dica={t('conta.idiomaDica')}>
+              <Selecao
+                value={idioma}
+                onChange={(e) => definirIdioma(e.target.value as Idioma)}
+              >
+                {IDIOMAS.map((lng) => (
+                  <option key={lng} value={lng}>{t(`conta.idiomaLabel.${lng}`)}</option>
+                ))}
+              </Selecao>
+            </Campo>
+          </div>
         </Cartao>
 
         <div className="space-y-4">

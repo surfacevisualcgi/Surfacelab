@@ -9,10 +9,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
-import { dataCurta, deCentavos, paraCentavos } from '@/lib/formato';
+import { dataCurta, paraCentavos } from '@/lib/formato';
 import {
   Acordeao, Botao, CabecalhoPagina, Campo, Carregando, Dinheiro, Entrada,
-  EstadoErro, Kpi, Modal, Selecao,
+  EntradaDinheiro, EstadoErro, Kpi, Modal, Selecao,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 import { AbaImpressoras, custoHoraImpressora, type Impressora } from '../cadastros/PaginaCadastros';
@@ -178,8 +178,8 @@ export function PaginaImpressoras() {
                 ))}
               </Selecao>
             </Campo>
-            <Campo rotulo="Custo (R$)" dica={t('impressoras.custoVaiFinanceiro')}>
-              <Entrada name="custo" inputMode="decimal" defaultValue={deCentavos(0)} />
+            <Campo rotulo={t('pedido.custo')} dica={t('impressoras.custoVaiFinanceiro')}>
+              <EntradaDinheiro name="custo" defaultCentavos={0} />
             </Campo>
           </div>
           <Campo rotulo="Observação">

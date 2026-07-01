@@ -23,6 +23,12 @@ import { PaginaImpressoras } from './features/impressoras/PaginaImpressoras';
 import { PaginaCadastros } from './features/cadastros/PaginaCadastros';
 import { PaginaConfiguracoes } from './features/configuracoes/PaginaConfiguracoes';
 import { PaginaConta } from './features/conta/PaginaConta';
+import { PaginaLanding } from './features/landing/PaginaLanding';
+import {
+  PaginaCreatorLabAnuncios,
+  PaginaCreatorLabImagens,
+  PaginaCreatorLabRadar,
+} from './features/creator-lab/PaginasCreatorLab';
 
 export default function App() {
   const { carregando, session, ativa } = useAuth();
@@ -42,7 +48,10 @@ export default function App() {
       <Route path="/convite/:token" element={<PaginaConvite />} />
 
       {!session ? (
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <>
+          <Route index element={<PaginaLanding />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </>
       ) : !ativa ? (
         <>
           <Route path="/empresa" element={<PaginaEmpresa />} />
@@ -72,6 +81,10 @@ export default function App() {
             <Route path="/cadastros" element={<PaginaCadastros />} />
             <Route path="/configuracoes" element={<PaginaConfiguracoes />} />
             <Route path="/conta" element={<PaginaConta />} />
+            <Route path="/creator-lab" element={<Navigate to="/creator-lab/anuncios" replace />} />
+            <Route path="/creator-lab/anuncios" element={<PaginaCreatorLabAnuncios />} />
+            <Route path="/creator-lab/imagens" element={<PaginaCreatorLabImagens />} />
+            <Route path="/creator-lab/radar" element={<PaginaCreatorLabRadar />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </>

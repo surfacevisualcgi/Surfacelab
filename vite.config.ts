@@ -5,7 +5,22 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
 
+// Supabase local — alvo do proxy do dev server. Permite expor o app por um
+// único túnel (ngrok): o front e a API saem pela mesma origem.
+const SUPABASE_LOCAL = 'http://127.0.0.1:54321';
+const rotasSupabase = ['/auth', '/rest', '/realtime', '/storage', '/functions', '/graphql'];
+
 export default defineConfig({
+  server: {
+    // libera o Host da URL do ngrok (Vite bloqueia hosts desconhecidos)
+    allowedHosts: true,
+    proxy: Object.fromEntries(
+      rotasSupabase.map((rota) => [
+        rota,
+        { target: SUPABASE_LOCAL, changeOrigin: true, ws: rota === '/realtime' },
+      ]),
+    ),
+  },
   plugins: [
     react(),
     tailwindcss(),

@@ -43,5 +43,9 @@ prototipo-telas/
 # Testes
 coverage/
 
+# Artefatos locais de QA/Design gerados durante prototipagem
+qa-artifacts/
+design-qa.md
+
 # TypeScript build info
 *.tsbuildinfo

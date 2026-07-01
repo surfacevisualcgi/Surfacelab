@@ -10,12 +10,13 @@ import { useAuth } from '@/auth/AuthProvider';
 const EXPIRACAO_S = 3600; // URL válida por 1h; cache de 50min
 
 /** URL assinada de um path do bucket fotos (null enquanto resolve/sem path) */
-export function useFotoUrl(path: string | null | undefined): string | null {
-  const { data } = useQuery({
+export function useFotoQuery(path: string | null | undefined) {
+  return useQuery({
     queryKey: ['foto-url', path],
     enabled: !!path,
     staleTime: 50 * 60 * 1000,
     gcTime: 55 * 60 * 1000,
+    retry: false,
     queryFn: async () => {
       const { data, error } = await supabase.storage
         .from('fotos')
@@ -24,6 +25,11 @@ export function useFotoUrl(path: string | null | undefined): string | null {
       return data.signedUrl;
     },
   });
+}
+
+/** URL assinada de um path do bucket fotos (null enquanto resolve/sem path) */
+export function useFotoUrl(path: string | null | undefined): string | null {
+  const { data } = useFotoQuery(path);
   return data ?? null;
 }
 

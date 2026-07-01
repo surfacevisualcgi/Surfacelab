@@ -9,7 +9,8 @@ import {
 } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { FORMATO_PADRAO, type FormatoTenant } from '@/lib/formato';
+import { formatoDoIdioma, type FormatoTenant } from '@/lib/formato';
+import i18n, { idiomaDoNavegador, resolverIdioma, type Idioma } from '@/i18n';
 import {
   temFlag,
   temPermissao,
@@ -30,6 +31,9 @@ export interface MembershipInfo {
   tenant: {
     id: string;
     nome: string;
+    logo_path: string | null;
+    sidebar_bg_color: string | null;
+    sidebar_text_color: string | null;
     moeda: string;
     locale: string;
     plano: string;
@@ -53,6 +57,9 @@ interface AuthContexto {
   /** membership do tenant ativo (null = precisa escolher/criar empresa) */
   ativa: MembershipInfo | null;
   formato: FormatoTenant;
+  /** idioma da pessoa (vale em todas as empresas) */
+  idioma: Idioma;
+  definirIdioma: (idioma: Idioma) => Promise<void>;
   pode: (modulo: Modulo, acao?: Acao) => boolean;
   flag: (f: Flag) => boolean;
   entrar: (email: string, senha: string) => Promise<string | null>;
@@ -81,6 +88,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [carregando, setCarregando] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [memberships, setMemberships] = useState<MembershipInfo[]>([]);
+  const [idioma, setIdioma] = useState<Idioma>(() => i18n.language as Idioma);
+
+  // Aplica o idioma da PESSOA (preferencias.idioma no usuario). Na primeira vez
+  // (sem preferência salva) usa o idioma do navegador e persiste — assim contas
+  // de países diferentes já veem o idioma certo.
+  const carregarIdioma = useCallback(async (s: Session | null) => {
+    if (!s) return;
+    const { data } = await supabase
+      .from('usuario').select('preferencias').eq('id', s.user.id).single();
+    const salvo = (data?.preferencias as { idioma?: string } | null)?.idioma;
+    if (salvo) {
+      const lang = resolverIdioma(salvo);
+      await i18n.changeLanguage(lang);
+      setIdioma(lang);
+      return;
+    }
+    const lang = idiomaDoNavegador();
+    await i18n.changeLanguage(lang);
+    setIdioma(lang);
+    await supabase.from('usuario')
+      .update({ preferencias: { ...(data?.preferencias ?? {}), idioma: lang } })
+      .eq('id', s.user.id);
+  }, []);
 
   const carregarMemberships = useCallback(async (s: Session | null) => {
     if (!s) {
@@ -91,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('membership')
       .select(
         'id, tenant_id, papel, permissoes_extras, flags_sensiveis, ' +
-          'tenant:tenant_id (id, nome, moeda, locale, plano, status_assinatura, ' +
+          'tenant:tenant_id (id, nome, logo_path, sidebar_bg_color, sidebar_text_color, moeda, locale, plano, status_assinatura, ' +
           'momento_baixa_estoque, criterio_rateio_custo_fixo, ' +
           'faturamento_mensal_esperado, cenarios_precificacao)',
       )
@@ -107,14 +137,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!ativo) return;
       setSession(data.session);
-      await carregarMemberships(data.session);
+      await Promise.all([carregarMemberships(data.session), carregarIdioma(data.session)]);
       setCarregando(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange(async (evento, s) => {
       if (!ativo) return;
       setSession(s);
       if (evento === 'SIGNED_IN' || evento === 'TOKEN_REFRESHED' || evento === 'USER_UPDATED') {
-        await carregarMemberships(s);
+        await Promise.all([carregarMemberships(s), carregarIdioma(s)]);
       }
       if (evento === 'SIGNED_OUT') setMemberships([]);
     });
@@ -122,7 +152,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ativo = false;
       sub.subscription.unsubscribe();
     };
-  }, [carregarMemberships]);
+  }, [carregarMemberships, carregarIdioma]);
+
+  const definirIdioma = useCallback(async (novo: Idioma) => {
+    await i18n.changeLanguage(novo);
+    setIdioma(novo);
+    if (!session) return;
+    const { data } = await supabase
+      .from('usuario').select('preferencias').eq('id', session.user.id).single();
+    await supabase.from('usuario')
+      .update({ preferencias: { ...(data?.preferencias ?? {}), idioma: novo } })
+      .eq('id', session.user.id);
+  }, [session]);
 
   const ativa = useMemo(() => {
     if (memberships.length === 0) return null;
@@ -132,13 +173,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return memberships.length === 1 ? memberships[0] : null;
   }, [memberships, session]);
 
-  const formato = useMemo<FormatoTenant>(
-    () =>
-      ativa
-        ? { moeda: ativa.tenant.moeda, locale: ativa.tenant.locale }
-        : FORMATO_PADRAO,
-    [ativa],
-  );
+  // moeda/locale seguem o idioma da pessoa (PT → R$, EN → US$)
+  const formato = useMemo<FormatoTenant>(() => formatoDoIdioma(idioma), [idioma]);
 
   const pode = useCallback(
     (modulo: Modulo, acao: Acao = 'ver') =>
@@ -210,6 +246,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       memberships,
       ativa,
       formato,
+      idioma,
+      definirIdioma,
       pode,
       flag,
       entrar,
@@ -220,7 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       trocarEmpresa,
       recarregar,
     }),
-    [carregando, session, memberships, ativa, formato, pode, flag, entrar,
+    [carregando, session, memberships, ativa, formato, idioma, definirIdioma, pode, flag, entrar,
      entrarComGoogle, cadastrar, sair, criarEmpresa, trocarEmpresa, recarregar],
   );
 

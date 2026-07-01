@@ -9,8 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
-import { deCentavos, paraCentavos } from '@/lib/formato';
-import { Botao, Campo, Entrada, Etiqueta, Modal, Selecao } from '@/components/ui';
+import { paraCentavos } from '@/lib/formato';
+import { Botao, Campo, Entrada, EntradaDinheiro, Etiqueta, Modal, Selecao } from '@/components/ui';
 import { SelecaoCategoria } from '@/components/SelecaoCategoria';
 import { useAuth } from '@/auth/AuthProvider';
 import type { ProdutoView } from './PaginaProdutos';
@@ -172,7 +172,7 @@ export function ModalNovoProduto({ aberto, onFechar }: { aberto: boolean; onFech
       {passo === 2 && (
         <div className="grid grid-cols-2 gap-3">
           <Campo rotulo={t('novoProduto.precoPraticado')}>
-            <Entrada inputMode="decimal" value={d.preco_praticado} onChange={(e) => set('preco_praticado', e.target.value)} placeholder="0,00" />
+            <EntradaDinheiro value={d.preco_praticado} onChange={(e) => set('preco_praticado', e.target.value)} />
           </Campo>
           <Campo rotulo={t('novoProduto.materialPrincipal')}>
             <Entrada value={d.material_principal} onChange={(e) => set('material_principal', e.target.value)} placeholder="PLA, PETG…" />
@@ -184,7 +184,7 @@ export function ModalNovoProduto({ aberto, onFechar }: { aberto: boolean; onFech
             <Entrada type="number" min="0" step="any" value={d.peso_g} onChange={(e) => set('peso_g', e.target.value)} />
           </Campo>
           <Campo rotulo={t('novoProduto.custoDesenvolvimento')}>
-            <Entrada inputMode="decimal" value={d.custo_desenvolvimento} onChange={(e) => set('custo_desenvolvimento', e.target.value)} placeholder="0,00" />
+            <EntradaDinheiro value={d.custo_desenvolvimento} onChange={(e) => set('custo_desenvolvimento', e.target.value)} />
           </Campo>
           <Campo rotulo={t('novoProduto.qtdRateio')} dica="Amortiza o desenvolvimento por N vendas">
             <Entrada type="number" min="0" value={d.qtd_planejada_rateio} onChange={(e) => set('qtd_planejada_rateio', e.target.value)} />
@@ -309,7 +309,7 @@ export function ModalEditarProduto({ produto, aberto, onFechar, onSalvo }: {
           <Entrada name="tags" defaultValue={(produto.tags ?? []).join(', ')} />
         </Campo>
         <Campo rotulo={t('novoProduto.custoDesenvolvimento')}>
-          <Entrada name="custo_desenvolvimento" inputMode="decimal" defaultValue={deCentavos(produto.custo_desenvolvimento ?? 0)} />
+          <EntradaDinheiro name="custo_desenvolvimento" defaultCentavos={produto.custo_desenvolvimento ?? 0} />
         </Campo>
         <Campo rotulo={t('novoProduto.qtdRateio')}>
           <Entrada name="qtd_planejada_rateio" type="number" min="0" defaultValue={produto.qtd_planejada_rateio ?? 0} />

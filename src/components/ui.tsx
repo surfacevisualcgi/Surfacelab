@@ -3,13 +3,15 @@
  * Base branca · detalhes pretos · gradiente azul→roxo→rosa como acento.
  */
 import {
+  useState,
   type ButtonHTMLAttributes,
+  type ChangeEvent,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { moeda } from '@/lib/formato';
+import { deCentavos, moeda, paraCentavos } from '@/lib/formato';
 import { useAuth } from '@/auth/AuthProvider';
 
 // ---------- Botões ----------
@@ -42,19 +44,47 @@ export function Campo({
   rotulo,
   children,
   dica,
+  ajuda,
   className = '',
 }: {
   rotulo: string;
   children: ReactNode;
   dica?: string;
+  /** texto de ajuda em balão ao passar o mouse no "!" ao lado do rótulo */
+  ajuda?: string;
   className?: string;
 }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-1 block text-xs font-semibold text-texto-2">{rotulo}</span>
+      <span className="mb-1 flex items-center gap-1 text-xs font-semibold text-texto-2">
+        {rotulo}
+        {ajuda && <Ajuda texto={ajuda} />}
+      </span>
       {children}
       {dica && <span className="mt-1 block text-[11px] text-texto-2">{dica}</span>}
     </label>
+  );
+}
+
+/** Ícone "!" com balão de ajuda no hover/foco. */
+export function Ajuda({ texto }: { texto: string }) {
+  return (
+    <span className="group relative inline-flex align-middle">
+      <span
+        tabIndex={0}
+        role="img"
+        aria-label={texto}
+        className="flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full bg-texto-2/20 text-[10px] font-bold leading-none text-texto-2"
+      >
+        !
+      </span>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-0 z-50 mb-1.5 hidden w-56 max-w-[min(14rem,70vw)] rounded-lg bg-ink px-2.5 py-1.5 text-[11px] font-normal leading-snug text-white shadow-lg group-hover:block group-focus-within:block"
+      >
+        {texto}
+      </span>
+    </span>
   );
 }
 
@@ -68,6 +98,144 @@ export function Entrada(props: InputHTMLAttributes<HTMLInputElement>) {
 
 export function Selecao(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...props} className={`${inputCls} ${props.className ?? ''}`} />;
+}
+
+/**
+ * Campo de texto com sugestões (combobox): aceita digitar livremente E mostra
+ * uma lista filtrada ancorada logo abaixo do campo. Substitui o <datalist>
+ * nativo, cujo popup posiciona errado em alguns navegadores/webviews.
+ */
+export function EntradaSugestao({
+  value, onChange, opcoes, name, placeholder, required, acaoAdicionar,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  opcoes: string[];
+  name?: string;
+  placeholder?: string;
+  required?: boolean;
+  acaoAdicionar?: {
+    rotulo: string;
+    onAdicionar: (valor: string) => void;
+  };
+}) {
+  const [aberto, setAberto] = useState(false);
+  const alvo = (value ?? '').toLowerCase().trim();
+  const filtradas = opcoes
+    .filter((o) => o.toLowerCase().includes(alvo))
+    .slice(0, 8);
+  const podeAdicionar = !!acaoAdicionar && !!alvo && !opcoes.some((o) => o.toLowerCase() === alvo);
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        name={name}
+        value={value}
+        required={required}
+        placeholder={placeholder}
+        autoComplete="off"
+        onChange={(e) => { onChange(e.target.value); setAberto(true); }}
+        onFocus={() => setAberto(true)}
+        onBlur={() => setTimeout(() => setAberto(false), 120)}
+        className={inputCls}
+      />
+      {aberto && (filtradas.length > 0 || podeAdicionar) && (
+        <ul className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-auto rounded-lg border border-borda bg-white py-1 shadow-lg">
+          {filtradas.map((o) => (
+            <li key={o}>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); onChange(o); setAberto(false); }}
+                className="block w-full px-3 py-1.5 text-left text-sm text-ink hover:bg-surface-2"
+              >
+                {o}
+              </button>
+            </li>
+          ))}
+          {podeAdicionar && (
+            <li className={filtradas.length > 0 ? 'border-t border-borda' : ''}>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  acaoAdicionar.onAdicionar(value.trim());
+                  setAberto(false);
+                }}
+                className="block w-full px-3 py-2 text-left text-sm font-semibold text-brand-roxo hover:bg-brand-roxo/5"
+              >
+                + {acaoAdicionar.rotulo}: {value.trim()}
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Campo de dinheiro estilo app de banco: o usuário só digita dígitos e o valor
+ * vai se montando da direita pra esquerda já formatado na moeda do idioma
+ * (R$ / US$), com os separadores certos. Trabalha sempre em centavos.
+ *
+ * Três modos de uso:
+ *  • Formulário (FormData):   <EntradaDinheiro name="preco" defaultCentavos={x} />
+ *      → injeta um <input hidden name=...> com o valor editável ("62,12"), então
+ *        os submits que já usam paraCentavos(f.get('preco')) seguem funcionando.
+ *  • Controlado por string:   <EntradaDinheiro value={s} onChange={e=>setS(e.target.value)} />
+ *      → drop-in dos campos com total ao vivo (devolve a string "62,12").
+ *  • Controlado por centavos: <EntradaDinheiro centavos={c} onCentavos={setC} />
+ */
+type EntradaDinheiroProps = {
+  name?: string;
+  defaultCentavos?: number;
+  value?: string;
+  onChange?: (e: { target: { value: string } }) => void;
+  centavos?: number;
+  onCentavos?: (c: number) => void;
+  placeholder?: string;
+  required?: boolean;
+  className?: string;
+  disabled?: boolean;
+};
+
+export function EntradaDinheiro({
+  name, defaultCentavos = 0, value, onChange, centavos, onCentavos,
+  placeholder, required, className, disabled,
+}: EntradaDinheiroProps) {
+  const { formato } = useAuth();
+  const [interno, setInterno] = useState(defaultCentavos);
+
+  // centavos atuais conforme o modo
+  const cents = centavos != null
+    ? centavos
+    : value != null
+      ? paraCentavos(value)
+      : interno;
+
+  function aoDigitar(e: ChangeEvent<HTMLInputElement>) {
+    const digitos = e.target.value.replace(/\D/g, '');
+    const novo = digitos ? parseInt(digitos, 10) : 0;
+    if (onCentavos) onCentavos(novo);
+    if (onChange) onChange({ target: { value: deCentavos(novo) } });
+    if (centavos == null && value == null) setInterno(novo);
+  }
+
+  return (
+    <>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={moeda(cents, formato)}
+        onChange={aoDigitar}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={`${inputCls} text-right tabular-nums ${className ?? ''}`}
+      />
+      {name && <input type="hidden" name={name} value={deCentavos(cents)} required={required} />}
+    </>
+  );
 }
 
 // ---------- Valores ----------
@@ -396,7 +564,7 @@ export function Logo({ claro = false, tamanho = 28 }: { claro?: boolean; tamanho
   return (
     <span className="inline-flex items-center gap-2">
       <img src="/brand/spirograph.svg" width={tamanho} height={tamanho} alt="" />
-      <span className={`text-sm tracking-wide ${claro ? 'text-white' : 'text-ink'}`}>
+      <span className={`text-sm tracking-wide ${claro ? 'text-current' : 'text-ink'}`}>
         <span className="font-extrabold">SURFACE</span>{' '}
         <span className="font-light italic">LABS</span>
       </span>

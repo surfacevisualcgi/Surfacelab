@@ -5,7 +5,7 @@
  */
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { enviarFoto, removerFoto, useFotoUrl, useTenantId } from '@/lib/fotos';
+import { enviarFoto, removerFoto, useFotoQuery, useTenantId } from '@/lib/fotos';
 import { mensagemErro } from '@/lib/dados';
 
 export function Foto({ path, alt = '', className = '' }: {
@@ -13,10 +13,11 @@ export function Foto({ path, alt = '', className = '' }: {
   alt?: string;
   className?: string;
 }) {
-  const url = useFotoUrl(path);
+  const foto = useFotoQuery(path);
   if (!path) return null;
-  if (!url) return <div className={`animate-pulse bg-surface-2 ${className}`} />;
-  return <img src={url} alt={alt} className={className} loading="lazy" />;
+  if (foto.data) return <img src={foto.data} alt={alt} className={className} loading="lazy" />;
+  if (foto.isError) return <div className={`flex items-center justify-center bg-surface-2 text-[10px] font-bold text-texto-2 ${className}`}>!</div>;
+  return <div className={`animate-pulse bg-surface-2 ${className}`} />;
 }
 
 /** Placeholder com o cubo da marca quando não há foto */
@@ -25,9 +26,16 @@ export function FotoOuPlaceholder({ path, alt = '', className = '' }: {
   alt?: string;
   className?: string;
 }) {
-  const url = useFotoUrl(path);
-  if (path && url) return <img src={url} alt={alt} className={className} loading="lazy" />;
-  if (path && !url) return <div className={`animate-pulse bg-surface-2 ${className}`} />;
+  const foto = useFotoQuery(path);
+  if (path && foto.data) return <img src={foto.data} alt={alt} className={className} loading="lazy" />;
+  if (path && foto.isError) {
+    return (
+      <div className={`flex items-center justify-center bg-surface-2 text-center text-[11px] font-bold text-texto-2 ${className}`}>
+        Foto indisponivel
+      </div>
+    );
+  }
+  if (path && foto.isLoading) return <div className={`animate-pulse bg-surface-2 ${className}`} />;
   return (
     <div className={`flex items-center justify-center bg-surface-2 ${className}`}>
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="url(#fop-g)" strokeWidth="1.2" className="opacity-50">

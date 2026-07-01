@@ -2,9 +2,9 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
-import { deCentavos, paraCentavos } from '@/lib/formato';
+import { paraCentavos } from '@/lib/formato';
 import {
-  Botao, CabecalhoPagina, Campo, Carregando, Dinheiro, Entrada, EstadoErro,
+  Botao, CabecalhoPagina, Campo, Carregando, Dinheiro, Entrada, EntradaDinheiro, EstadoErro,
   EstadoVazio, Kpi, Modal, TabelaDados,
 } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
@@ -142,7 +142,7 @@ export function PaginaFornecedores() {
               <Entrada name="prazo_entrega_dias" type="number" min="0" defaultValue={editando.prazo_entrega_dias ?? ''} />
             </Campo>
             <Campo rotulo={t('fornecedor.pedidoMinimo')}>
-              <Entrada name="pedido_minimo" inputMode="decimal" defaultValue={editando.pedido_minimo != null ? deCentavos(editando.pedido_minimo) : ''} />
+              <EntradaDinheiro name="pedido_minimo" defaultCentavos={editando.pedido_minimo ?? 0} />
             </Campo>
             <Campo rotulo={`${t('fornecedor.avaliacao')} (1–5)`}>
               <Entrada name="avaliacao" type="number" min="1" max="5" defaultValue={editando.avaliacao ?? ''} />

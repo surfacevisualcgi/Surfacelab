@@ -10,6 +10,16 @@ export interface FormatoTenant {
 
 export const FORMATO_PADRAO: FormatoTenant = { moeda: 'BRL', locale: 'pt-BR' };
 
+/**
+ * Moeda/locale a partir do idioma da pessoa: Português → R$ (BRL, pt-BR),
+ * Inglês → US$ (USD, en-US). Os valores são guardados em centavos e NÃO são
+ * convertidos por câmbio — só muda o símbolo e a formatação dos separadores.
+ */
+export function formatoDoIdioma(idioma: string): FormatoTenant {
+  if (idioma === 'en') return { moeda: 'USD', locale: 'en-US' };
+  return { moeda: 'BRL', locale: 'pt-BR' };
+}
+
 /** centavos (inteiro) → string localizada. 60402 → "R$ 604,02" */
 export function moeda(centavos: number | null | undefined, f: FormatoTenant = FORMATO_PADRAO): string {
   if (centavos == null) return '•••'; // valor mascarado (sem permissão)

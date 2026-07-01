@@ -45,7 +45,7 @@ export function PaginaDashboard() {
         await Promise.all([
           supabase.from('v_pedido').select('id, status, total, custo_estimado, created_at').is('deleted_at', null),
           supabase.from('v_orcamento').select('id, numero, status, validade, cliente_snapshot').is('deleted_at', null),
-          supabase.from('material').select('id, nome, saldo, reservado, minimo, unidade_consumo').is('deleted_at', null),
+          supabase.from('material').select('id, nome, saldo, reservado, minimo, unidade_consumo, alerta_estoque').is('deleted_at', null),
           supabase.from('v_ordem_producao').select('id, numero, status').is('deleted_at', null),
           supabase.from('lancamento').select('tipo, valor, status, vencimento').is('deleted_at', null),
           supabase.from('v_pedido_item').select('pedido_id, produto_id, valor_total').is('deleted_at', null),
@@ -106,7 +106,7 @@ export function PaginaDashboard() {
       // painel lateral
       const hoje = new Date().toISOString().slice(0, 10);
       const estoqueBaixo = (materiais.data ?? []).filter(
-        (m) => Number(m.minimo) > 0 && Number(m.saldo) - Number(m.reservado) <= Number(m.minimo),
+        (m) => m.alerta_estoque !== false && Number(m.minimo) > 0 && Number(m.saldo) - Number(m.reservado) <= Number(m.minimo),
       );
       const orcs = orcamentos.data ?? [];
       const tarefas = [

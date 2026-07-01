@@ -1,21 +1,46 @@
-/**
- * Formulário completo do Modelo 3D — seções Identificação / Licença /
- * Configuração de impressão. Cobre TODOS os campos do modelo (antes só
- * editáveis em parte). Usado tanto para CRIAR (catálogo) quanto para EDITAR
- * (ficha). Persiste direto; a galeria de fotos e o G-code ficam na ficha.
- */
-import { useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCrud, useLista, mensagemErro } from '@/lib/dados';
-import { deCentavos, paraCentavos } from '@/lib/formato';
-import { Acordeao, Botao, Campo, Entrada, Modal, Selecao } from '@/components/ui';
+import { paraCentavos } from '@/lib/formato';
+import { Botao, Campo, Entrada, EntradaDinheiro, Modal, Selecao } from '@/components/ui';
 import { SelecaoCategoria } from '@/components/SelecaoCategoria';
+
+type Passo = 'identificacao' | 'impressao' | 'qualidade' | 'licenca';
+
+function formatarDimensoes(largura: number | null, profundidade: number | null, altura: number | null) {
+  if (largura == null || profundidade == null || altura == null) return null;
+  if (largura <= 0 || profundidade <= 0 || altura <= 0) return null;
+  return `${largura} x ${profundidade} x ${altura} mm`;
+}
+
+function linhas(texto: FormDataEntryValue | null) {
+  return String(texto ?? '')
+    .split(/\r?\n/)
+    .map((linha) => linha.trim())
+    .filter(Boolean);
+}
+
+function tags(texto: FormDataEntryValue | null) {
+  return String(texto ?? '')
+    .split(/[,\n]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
 
 export interface ModeloEdit {
   id?: string;
   nome?: string;
   codigo_interno?: string | null;
   categoria_id?: string | null;
+  tags?: string[];
+  dimensoes?: string | null;
+  largura_mm?: number | null;
+  profundidade_mm?: number | null;
+  altura_mm?: number | null;
+  volume_mm3?: number | null;
+  arquivo_original?: string | null;
+  arquivo_original_nome?: string | null;
+  arquivo_original_tamanho_bytes?: number | null;
   descricao?: string | null;
   tecnologia?: 'fdm' | 'resina';
   origem?: string;
@@ -39,10 +64,12 @@ export interface ModeloEdit {
   preenchimento?: number | null;
   paredes?: number | null;
   suportes?: boolean;
+  instrucoes?: string[];
+  checklist_qualidade?: string[];
 }
 
 export function FormularioModelo({ modelo, aberto, onFechar, onSalvo }: {
-  modelo: ModeloEdit | null; // null = fechado; {} = novo; {id,...} = editar
+  modelo: ModeloEdit | null;
   aberto: boolean;
   onFechar: () => void;
   onSalvo: (id: string) => void;
@@ -52,19 +79,48 @@ export function FormularioModelo({ modelo, aberto, onFechar, onSalvo }: {
   const materiais = useLista<{ id: string; nome: string; tipo: string }>('material', { ordem: 'nome', desc: false });
   const impressoras = useLista<{ id: string; nome: string }>('impressora', { ordem: 'nome', desc: false });
   const [categoriaId, setCategoriaId] = useState(modelo?.categoria_id ?? '');
+  const [tecnologia, setTecnologia] = useState<'fdm' | 'resina'>(modelo?.tecnologia ?? 'fdm');
+  const [passo, setPasso] = useState<Passo>('identificacao');
   const [erro, setErro] = useState<string | null>(null);
-
-  // re-sincroniza a categoria quando abre para um modelo diferente
   const chave = modelo?.id ?? 'novo';
+
+  useEffect(() => {
+    setCategoriaId(modelo?.categoria_id ?? '');
+    setTecnologia(modelo?.tecnologia ?? 'fdm');
+    setPasso('identificacao');
+    setErro(null);
+  }, [chave, modelo?.categoria_id, modelo?.tecnologia]);
+
+  const un = tecnologia === 'resina' ? 'ml' : 'g';
+  const dimensoesIniciais = useMemo(() => ({
+    largura: modelo?.largura_mm ?? null,
+    profundidade: modelo?.profundidade_mm ?? null,
+    altura: modelo?.altura_mm ?? null,
+  }), [modelo?.altura_mm, modelo?.largura_mm, modelo?.profundidade_mm]);
 
   async function salvar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const num = (k: string) => (f.get(k) ? Number(f.get(k)) : null);
+    const largura = num('largura_mm');
+    const profundidade = num('profundidade_mm');
+    const altura = num('altura_mm');
+    const dimensoesEstruturadas = formatarDimensoes(largura, profundidade, altura);
+    const nome = String(f.get('nome') ?? '').trim();
+    if (!nome) {
+      setPasso('identificacao');
+      setErro('Informe o nome do modelo.');
+      return;
+    }
     const valores = {
-      nome: f.get('nome') as string,
+      nome,
       codigo_interno: (f.get('codigo_interno') as string) || null,
       categoria_id: categoriaId || null,
+      tags: tags(f.get('tags')),
+      largura_mm: largura,
+      profundidade_mm: profundidade,
+      altura_mm: altura,
+      dimensoes: dimensoesEstruturadas || (f.get('dimensoes') as string) || null,
       descricao: (f.get('descricao') as string) || null,
       tecnologia: f.get('tecnologia') as string,
       origem: f.get('origem') as string,
@@ -88,6 +144,8 @@ export function FormularioModelo({ modelo, aberto, onFechar, onSalvo }: {
       preenchimento: f.get('preenchimento') ? Number(f.get('preenchimento')) / 100 : null,
       paredes: num('paredes'),
       suportes: f.get('suportes') === 'on',
+      instrucoes: linhas(f.get('instrucoes')),
+      checklist_qualidade: linhas(f.get('checklist_qualidade')),
     };
     try {
       if (modelo?.id) {
@@ -104,47 +162,84 @@ export function FormularioModelo({ modelo, aberto, onFechar, onSalvo }: {
   }
 
   if (!modelo) return null;
-  const un = (modelo.tecnologia ?? 'fdm') === 'resina' ? 'ml' : 'g';
+
+  const passos: { id: Passo; rotulo: string }[] = [
+    { id: 'identificacao', rotulo: 'Identificacao' },
+    { id: 'impressao', rotulo: 'Impressao' },
+    { id: 'qualidade', rotulo: 'Qualidade' },
+    { id: 'licenca', rotulo: 'Licenca' },
+  ];
+  const indicePasso = passos.findIndex((p) => p.id === passo);
+  const irPara = (delta: number) => setPasso(passos[Math.min(passos.length - 1, Math.max(0, indicePasso + delta))].id);
 
   return (
-    <Modal aberto={aberto} titulo={modelo.id ? t('formModelo.editar') : t('modelo.novo')} onFechar={onFechar} largura="max-w-2xl">
+    <Modal aberto={aberto} titulo={modelo.id ? t('formModelo.editar') : t('modelo.novo')} onFechar={onFechar} largura="max-w-4xl">
       <form onSubmit={salvar} className="space-y-4" key={chave}>
-        {/* Identificação */}
-        <section>
+        <div className="grid grid-cols-4 overflow-hidden rounded-xl border border-borda bg-surface-2 p-1">
+          {passos.map((item, idx) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setPasso(item.id)}
+              className={`flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs font-extrabold transition ${
+                passo === item.id ? 'bg-white text-ink shadow-sm' : 'text-texto-2 hover:text-ink'
+              }`}
+            >
+              <span className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] ${
+                passo === item.id ? 'grad-acento text-white' : 'bg-white text-texto-2'
+              }`}>
+                {idx + 1}
+              </span>
+              <span className="truncate">{item.rotulo}</span>
+            </button>
+          ))}
+        </div>
+
+        <section className={passo === 'identificacao' ? '' : 'hidden'}>
           <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-texto-2">{t('formModelo.secaoIdentificacao')}</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Campo rotulo={t('modelo.nome')} className="col-span-2 sm:col-span-3">
-              <Entrada name="nome" required defaultValue={modelo.nome ?? ''} />
+              <Entrada name="nome" defaultValue={modelo.nome ?? ''} />
             </Campo>
-            <Campo rotulo="Código"><Entrada name="codigo_interno" defaultValue={modelo.codigo_interno ?? ''} /></Campo>
+            <Campo rotulo="Codigo"><Entrada name="codigo_interno" defaultValue={modelo.codigo_interno ?? ''} /></Campo>
             <Campo rotulo={t('modelo.tecnologia')}>
-              <Selecao name="tecnologia" defaultValue={modelo.tecnologia ?? 'fdm'}>
+              <Selecao name="tecnologia" value={tecnologia} onChange={(e) => setTecnologia(e.target.value as 'fdm' | 'resina')}>
                 <option value="fdm">FDM</option><option value="resina">Resina</option>
               </Selecao>
+            </Campo>
+            <Campo rotulo={t('novoProduto.dimensoes')} className="col-span-2 sm:col-span-3" dica="Use milimetros. Se vier de STL, esses campos podem ser preenchidos automaticamente.">
+              <div className="grid grid-cols-3 gap-2">
+                <Entrada name="largura_mm" type="number" min="0" step="0.01" defaultValue={dimensoesIniciais.largura ?? ''} placeholder="Largura" />
+                <Entrada name="profundidade_mm" type="number" min="0" step="0.01" defaultValue={dimensoesIniciais.profundidade ?? ''} placeholder="Profundidade" />
+                <Entrada name="altura_mm" type="number" min="0" step="0.01" defaultValue={dimensoesIniciais.altura ?? ''} placeholder="Altura" />
+              </div>
+              <input type="hidden" name="dimensoes" defaultValue={modelo.dimensoes ?? ''} />
             </Campo>
             <Campo rotulo={t('categoria.rotulo')} className="col-span-2 sm:col-span-3">
               <SelecaoCategoria escopo="modelo" valor={categoriaId} onChange={setCategoriaId} />
             </Campo>
+            <Campo rotulo="Tags" className="col-span-full" dica="Separe por virgula ou quebra de linha. Ex.: porta-joia, ondulado, presente.">
+              <Entrada name="tags" defaultValue={(modelo.tags ?? []).join(', ')} placeholder="porta-joia, ondulado, presente" />
+            </Campo>
             <Campo rotulo={t('formModelo.descricao')} className="col-span-full">
-              <textarea name="descricao" rows={2} defaultValue={modelo.descricao ?? ''}
+              <textarea name="descricao" rows={3} defaultValue={modelo.descricao ?? ''}
                 className="w-full rounded-lg border border-borda bg-white px-3 py-2 text-sm" />
             </Campo>
           </div>
         </section>
 
-        {/* Estimativas do fatiador (essencial p/ o cálculo) */}
-        <section>
+        <section className={passo === 'impressao' ? '' : 'hidden'}>
           <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-texto-2">{t('modelo.estimativasFatiador')}</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Campo rotulo={t('modelo.tempoImpressao')}>
-              <Entrada name="tempo_impressao_min" type="number" min="0" required defaultValue={modelo.tempo_impressao_min ?? 60} />
+              <Entrada name="tempo_impressao_min" type="number" min="0" defaultValue={modelo.tempo_impressao_min ?? 60} />
             </Campo>
             <Campo rotulo={t('modelo.probFalha')}>
               <Entrada name="probabilidade_falha" type="number" min="0" max="100" step="0.5"
                 defaultValue={modelo.probabilidade_falha != null ? Number(modelo.probabilidade_falha) * 100 : 5} />
             </Campo>
-            <Campo rotulo={`${t('modelo.pesoPeca')}`}>
-              <Entrada name="peso_peca_g" type="number" min="0" step="any" required defaultValue={modelo.peso_peca_g ?? 0} />
+            <Campo rotulo={t('modelo.pesoPeca')}>
+              <Entrada name="peso_peca_g" type="number" min="0" step="any" defaultValue={modelo.peso_peca_g ?? 0} />
             </Campo>
             <Campo rotulo={`Suporte (${un})`}>
               <Entrada name="peso_suporte_g" type="number" min="0" step="any" defaultValue={modelo.peso_suporte_g ?? 0} />
@@ -152,24 +247,22 @@ export function FormularioModelo({ modelo, aberto, onFechar, onSalvo }: {
             <Campo rotulo={`Purga (${un})`}>
               <Entrada name="peso_purga_g" type="number" min="0" step="any" defaultValue={modelo.peso_purga_g ?? 0} />
             </Campo>
-            <Campo rotulo={`Desperdício (${un})`}>
+            <Campo rotulo={`Desperdicio (${un})`}>
               <Entrada name="peso_desperdicio_g" type="number" min="0" step="any" defaultValue={modelo.peso_desperdicio_g ?? 0} />
             </Campo>
           </div>
-        </section>
 
-        {/* Configuração de impressão (recolhível) */}
-        <Acordeao titulo={t('formModelo.secaoImpressao')}>
+          <h3 className="mb-2 mt-4 text-[11px] font-bold uppercase tracking-wide text-texto-2">{t('formModelo.secaoImpressao')}</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Campo rotulo={t('modelo.impressoraRecomendada')} className="col-span-2 sm:col-span-1">
               <Selecao name="impressora_recomendada_id" defaultValue={modelo.impressora_recomendada_id ?? ''}>
-                <option value="">—</option>
+                <option value="">-</option>
                 {(impressoras.data ?? []).map((i) => <option key={i.id} value={i.id}>{i.nome}</option>)}
               </Selecao>
             </Campo>
             <Campo rotulo={t('modelo.materialRecomendado')} className="col-span-2 sm:col-span-1">
               <Selecao name="material_recomendado_id" defaultValue={modelo.material_recomendado_id ?? ''}>
-                <option value="">—</option>
+                <option value="">-</option>
                 {(materiais.data ?? []).filter((m) => m.tipo === 'filamento' || m.tipo === 'resina')
                   .map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
               </Selecao>
@@ -185,10 +278,24 @@ export function FormularioModelo({ modelo, aberto, onFechar, onSalvo }: {
               {t('formModelo.suportes')}
             </label>
           </div>
-        </Acordeao>
+        </section>
 
-        {/* Licença comercial (recolhível) */}
-        <Acordeao titulo={t('formModelo.secaoLicenca')}>
+        <section className={passo === 'qualidade' ? '' : 'hidden'}>
+          <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-texto-2">Instrucoes e qualidade</h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Campo rotulo={t('modelo.instrucoes')} dica="Uma instrucao por linha.">
+              <textarea name="instrucoes" rows={7} defaultValue={(modelo.instrucoes ?? []).join('\n')}
+                className="w-full rounded-lg border border-borda bg-white px-3 py-2 text-sm" />
+            </Campo>
+            <Campo rotulo={t('modelo.checklist')} dica="Um item de revisao por linha.">
+              <textarea name="checklist_qualidade" rows={7} defaultValue={(modelo.checklist_qualidade ?? []).join('\n')}
+                className="w-full rounded-lg border border-borda bg-white px-3 py-2 text-sm" />
+            </Campo>
+          </div>
+        </section>
+
+        <section className={passo === 'licenca' ? '' : 'hidden'}>
+          <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-texto-2">{t('formModelo.secaoLicenca')}</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Campo rotulo={t('modelo.origem')}>
               <Selecao name="origem" defaultValue={modelo.origem ?? 'proprio'}>
@@ -198,19 +305,26 @@ export function FormularioModelo({ modelo, aberto, onFechar, onSalvo }: {
               </Selecao>
             </Campo>
             <Campo rotulo={t('formModelo.autor')}><Entrada name="autor" defaultValue={modelo.autor ?? ''} /></Campo>
-            <Campo rotulo={t('formModelo.tipoLicenca')}><Entrada name="tipo_licenca" placeholder="CC-BY, comercial…" defaultValue={modelo.tipo_licenca ?? ''} /></Campo>
-            <Campo rotulo={t('formModelo.custoAquisicao')}><Entrada name="custo_aquisicao" inputMode="decimal" defaultValue={deCentavos(modelo.custo_aquisicao ?? 0)} /></Campo>
+            <Campo rotulo={t('formModelo.tipoLicenca')}><Entrada name="tipo_licenca" placeholder="CC-BY, comercial" defaultValue={modelo.tipo_licenca ?? ''} /></Campo>
+            <Campo rotulo={t('formModelo.custoAquisicao')}><EntradaDinheiro name="custo_aquisicao" defaultCentavos={modelo.custo_aquisicao ?? 0} /></Campo>
             <Campo rotulo={t('formModelo.validade')}><Entrada name="licenca_validade" type="date" defaultValue={modelo.licenca_validade ?? ''} /></Campo>
             <Campo rotulo={t('formModelo.direitos')} className="col-span-2 sm:col-span-3">
               <Entrada name="direitos_uso" defaultValue={modelo.direitos_uso ?? ''} />
             </Campo>
           </div>
-        </Acordeao>
+        </section>
 
         {erro && <p className="text-xs font-semibold text-erro">{erro}</p>}
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-between gap-2 border-t border-borda pt-3">
           <Botao type="button" variante="secundario" onClick={onFechar}>{t('acoes.cancelar')}</Botao>
-          <Botao type="submit">{t('acoes.salvar')}</Botao>
+          <div className="flex gap-2">
+            <Botao type="button" variante="secundario" disabled={indicePasso === 0} onClick={() => irPara(-1)}>Voltar</Botao>
+            {indicePasso < passos.length - 1 ? (
+              <Botao type="button" onClick={() => irPara(1)}>Continuar</Botao>
+            ) : (
+              <Botao type="submit">{t('acoes.salvar')}</Botao>
+            )}
+          </div>
         </div>
       </form>
     </Modal>

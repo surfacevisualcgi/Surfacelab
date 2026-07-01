@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { useLista, mensagemErro } from '@/lib/dados';
 import { deCentavos, moeda, paraCentavos } from '@/lib/formato';
-import { Botao, Campo, Entrada, Modal, Selecao } from '@/components/ui';
+import { Botao, Campo, Entrada, EntradaDinheiro, Modal, Selecao } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 
 interface ProdutoRef { id: string; nome: string; preco_praticado: number; preco_sugerido: number | null }
@@ -142,7 +142,7 @@ export function ModalEditarOrcamento({ orcamentoId, aberto, onFechar, onSalvo }:
                 <Entrada type="number" min="1" step="any" value={it.quantidade || ''} onChange={(e) => setItem(i, { quantidade: Number(e.target.value) })} />
               </Campo>
               <Campo rotulo={t('novoPedido.precoUnit')}>
-                <Entrada inputMode="decimal" value={it.preco} placeholder="0,00" onChange={(e) => setItem(i, { preco: e.target.value })} />
+                <EntradaDinheiro value={it.preco} onChange={(e) => setItem(i, { preco: e.target.value })} />
               </Campo>
               <button type="button" className="pb-2.5 text-texto-2 hover:text-erro" aria-label={t('acoes.excluir')}
                 onClick={() => setItens(itens.filter((_, j) => j !== i))}>✕</button>
@@ -156,10 +156,10 @@ export function ModalEditarOrcamento({ orcamentoId, aberto, onFechar, onSalvo }:
           <p className="pt-1 text-[11px] font-bold uppercase tracking-wide text-texto-2">{t('editarOrc.cabecalho')}</p>
           <div className="grid grid-cols-2 gap-3">
             <Campo rotulo={t('orcamento.validade')}><Entrada type="date" value={validade} onChange={(e) => setValidade(e.target.value)} /></Campo>
-            <Campo rotulo={t('orcamento.prazoEntrega')}><Entrada value={prazo} placeholder="Ex.: 7 dias úteis" onChange={(e) => setPrazo(e.target.value)} /></Campo>
-            <Campo rotulo={t('orcamento.frete')}><Entrada inputMode="decimal" value={frete} placeholder="0,00" onChange={(e) => setFrete(e.target.value)} /></Campo>
-            <Campo rotulo={t('calculadora.desconto')}><Entrada inputMode="decimal" value={desconto} placeholder="0,00" onChange={(e) => setDesconto(e.target.value)} /></Campo>
-            <Campo rotulo={t('orcamento.condicoes')} className="col-span-2"><Entrada value={condicoes} placeholder="Ex.: 50% sinal + 50% na entrega" onChange={(e) => setCondicoes(e.target.value)} /></Campo>
+            <Campo rotulo={t('orcamento.prazoEntrega')}><Entrada value={prazo} placeholder={t('novoOrc.placeholderPrazo')} onChange={(e) => setPrazo(e.target.value)} /></Campo>
+            <Campo rotulo={t('orcamento.frete')}><EntradaDinheiro value={frete} onChange={(e) => setFrete(e.target.value)} /></Campo>
+            <Campo rotulo={t('calculadora.desconto')}><EntradaDinheiro value={desconto} onChange={(e) => setDesconto(e.target.value)} /></Campo>
+            <Campo rotulo={t('orcamento.condicoes')} className="col-span-2"><Entrada value={condicoes} placeholder={t('novoOrc.placeholderCondicoes')} onChange={(e) => setCondicoes(e.target.value)} /></Campo>
             <Campo rotulo={t('orcamento.observacoes')} className="col-span-2">
               <textarea value={obs} rows={2} onChange={(e) => setObs(e.target.value)} className="w-full rounded-lg border border-borda bg-white px-3 py-2 text-sm" />
             </Campo>
