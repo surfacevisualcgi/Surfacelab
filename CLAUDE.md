@@ -53,6 +53,18 @@ Supabase já existe (ver §infra na memória). Próximo passo: **construir em Re
 - Frontend: **React** (PWA responsivo, desktop + mobile, PT-BR, orientado a iniciante).
 - Módulo de cálculo isolado e testável (não espalhar fórmulas pela UI).
 
+## REGRA OPERACIONAL - Supabase cloud
+- O banco oficial do projeto e o **Supabase cloud** do projeto **Surface Labs**
+  (`zqpkvlurablyswdxambl`, `https://zqpkvlurablyswdxambl.supabase.co`).
+- Nao usar Supabase local para alteracoes, melhorias, migrations, testes de schema ou
+  validacoes de banco. O ambiente local pode rodar apenas o frontend.
+- Toda mudanca de banco deve ser criada em migration versionada no repositorio e aplicada
+  no projeto cloud linkado pela Supabase CLI ou pelas ferramentas oficiais do Supabase.
+- Depois de alterar schema/RLS/views/funcoes/storage no cloud, validar no proprio cloud
+  com consulta/teste real e, quando disponivel, rodar advisors.
+- Nunca clicar manualmente no dashboard para criar schema fora de migration, salvo se o
+  usuario pedir explicitamente uma acao emergencial.
+
 ## Decisões travadas — NÃO reabrir sem o usuário
 1. **Multi-tenant** shared schema: `tenant_id` em toda tabela de negócio. Entidades
    base: `usuario`, `tenant`, `membership(papel, permissoes_extras, flags_sensiveis)`,

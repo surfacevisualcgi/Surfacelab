@@ -64,6 +64,7 @@ interface ImpressoraRef {
   vida_util_horas: number;
   consumo_w: number;
   manutencao_hora: number;
+  perfil_energia_id: string | null;
 }
 
 interface CategoriaRef {
@@ -93,7 +94,7 @@ const ICONES = {
 
 function Icone({ d, className = '' }: { d: string; className?: string }) {
   return (
-    <svg className={className} width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <svg className={className} width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d={d} />
     </svg>
   );
@@ -107,6 +108,11 @@ export function PaginaModelos() {
   const categorias = useLista<CategoriaRef>('categoria', { ordem: 'nome', desc: false });
   const materiais = useLista<MaterialRef>('material', { ordem: 'nome', desc: false });
   const impressoras = useLista<ImpressoraRef>('impressora', { ordem: 'nome', desc: false });
+  const energias = useLista<{ id: string; tarifa_kwh: number }>('perfil_energia', {
+    ordem: 'created_at',
+    desc: false,
+    selecao: 'id, tarifa_kwh',
+  });
   const [editando, setEditando] = useState<ModeloEdit | null>(null);
   const [importando, setImportando] = useState(false);
   const [busca, setBusca] = useState('');
@@ -132,6 +138,7 @@ export function PaginaModelos() {
   const modelos = lista.data ?? [];
   const materiaisPorId = useMemo(() => new Map((materiais.data ?? []).map((m) => [m.id, m])), [materiais.data]);
   const impressorasPorId = useMemo(() => new Map((impressoras.data ?? []).map((i) => [i.id, i])), [impressoras.data]);
+  const energiasPorId = useMemo(() => new Map((energias.data ?? []).map((e) => [e.id, e])), [energias.data]);
   const categoriasPorId = useMemo(() => new Map((categorias.data ?? []).map((c) => [c.id, c])), [categorias.data]);
   const categoriasModelo = (categorias.data ?? []).filter((c) => c.escopo === 'modelo');
 
@@ -262,7 +269,7 @@ export function PaginaModelos() {
           ) : (
             <>
               <div className="min-h-0 flex-1 overflow-auto bg-transparent pr-1">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
                   {visiveis.map((m) => (
                     <ModeloCard
                       key={m.id}
@@ -270,6 +277,7 @@ export function PaginaModelos() {
                       ativo={selecionado?.id === m.id}
                       material={m.material_recomendado_id ? materiaisPorId.get(m.material_recomendado_id) : undefined}
                       impressora={m.impressora_recomendada_id ? impressorasPorId.get(m.impressora_recomendada_id) : undefined}
+                      tarifaKwh={tarifaDaImpressora(m.impressora_recomendada_id ? impressorasPorId.get(m.impressora_recomendada_id) : undefined, energiasPorId, energias.data ?? [])}
                       categoria={m.categoria_id ? categoriasPorId.get(m.categoria_id) : undefined}
                       formato={formato}
                       podeEditar={pode('modelos', 'editar')}
@@ -333,6 +341,7 @@ function ModeloCard({
   ativo,
   material,
   impressora,
+  tarifaKwh,
   categoria,
   formato,
   podeEditar,
@@ -346,6 +355,7 @@ function ModeloCard({
   ativo: boolean;
   material?: MaterialRef;
   impressora?: ImpressoraRef;
+  tarifaKwh: number;
   categoria?: CategoriaRef;
   formato: ReturnType<typeof useAuth>['formato'];
   podeEditar: boolean;
@@ -360,27 +370,27 @@ function ModeloCard({
   const peso = pesoTotal(modelo);
   const un = modelo.tecnologia === 'resina' ? 'ml' : 'g';
   const ok = modeloOk(modelo);
-  const custo = custoTecnico(modelo, material, impressora);
+  const custo = custoTecnico(modelo, material, impressora, tarifaKwh);
 
   return (
     <article
       onClick={onSelecionar}
-      className={`group flex cursor-pointer flex-col overflow-hidden rounded-xl border bg-white transition-all hover:-translate-y-0.5 hover:shadow-md ${
+      className={`group flex cursor-pointer flex-col overflow-hidden rounded-lg border bg-white transition-all hover:-translate-y-0.5 hover:shadow-md ${
         ativo ? 'border-brand-roxo shadow-sm ring-2 ring-brand-roxo/10' : 'border-borda'
       }`}
     >
       <Link to={`/modelos/${modelo.id}`} className="relative block overflow-hidden bg-gradient-to-br from-surface-2 to-white">
-        <FotoOuPlaceholder path={modelo.fotos?.[0]} alt={modelo.nome} className="aspect-[16/10] w-full object-cover" />
-        <div className="absolute left-2 top-2 flex gap-1">
+        <FotoOuPlaceholder path={modelo.fotos?.[0]} alt={modelo.nome} className="aspect-square w-full object-cover" />
+        <div className="absolute left-1.5 top-1.5 flex gap-1">
           <Chip cor="roxo">{modelo.tecnologia.toUpperCase()}</Chip>
           <Chip cor={ok ? 'verde' : 'amarelo'}>{ok ? 'OK' : t('modelo.revisar')}</Chip>
         </div>
       </Link>
 
-      <div className="flex flex-1 flex-col p-2.5">
+      <div className="flex flex-1 flex-col p-1.5">
         <div className="flex items-start justify-between gap-1.5">
           <div className="min-w-0">
-            <Link to={`/modelos/${modelo.id}`} className="block truncate text-[13px] font-black text-ink group-hover:text-brand-roxo">
+            <Link to={`/modelos/${modelo.id}`} className="block truncate text-xs font-black text-ink group-hover:text-brand-roxo">
               {modelo.nome}
             </Link>
             <p className="mt-0.5 truncate text-[10px] font-medium text-texto-2">
@@ -389,7 +399,7 @@ function ModeloCard({
           </div>
           <div className="relative shrink-0">
             <button
-              className="rounded-lg p-1 text-texto-2 hover:bg-surface-2 hover:text-ink"
+              className="rounded-md p-0.5 text-texto-2 hover:bg-surface-2 hover:text-ink"
               type="button"
               aria-haspopup="menu"
               aria-expanded={menuAberto}
@@ -439,15 +449,15 @@ function ModeloCard({
           </div>
         </div>
 
-        {(modelo.cores ?? []).length > 0 && <div className="mt-1.5"><LinhaSwatches cores={modelo.cores} /></div>}
+        {(modelo.cores ?? []).length > 0 && <div className="mt-1"><LinhaSwatches cores={modelo.cores} /></div>}
         {(modelo.tags ?? []).length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
+          <div className="mt-1 flex flex-wrap gap-1">
             {(modelo.tags ?? []).slice(0, 3).map((tag) => <Chip key={tag} cor="azul">{tag}</Chip>)}
             {(modelo.tags ?? []).length > 3 && <Chip cor="azul">+{(modelo.tags ?? []).length - 3}</Chip>}
           </div>
         )}
 
-        <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px]">
+        <div className="mt-1.5 grid grid-cols-2 gap-x-1.5 gap-y-1 text-[10px]">
           <MiniDado icone={ICONES.clock} rotulo={t('modelo.tempoCurto')} valor={duracao(modelo.tempo_impressao_min)} />
           <MiniDado icone={ICONES.material} rotulo={t('modelo.pesoTotal')} valor={`${peso.toLocaleString(formato.locale)}${un}`} />
           <MiniDado icone={ICONES.cubo} rotulo={t('novoProduto.dimensoes')} valor={dimensoesModelo(modelo) ?? 'Sem dimensoes'} erro={!dimensoesModelo(modelo)} />
@@ -455,26 +465,26 @@ function ModeloCard({
           <MiniDado icone={ICONES.printer} rotulo={t('modelo.impressoraCurta')} valor={impressora?.nome ?? t('modelo.semImpressoraCurto')} erro={!impressora} />
         </div>
 
-        <div className="mt-2 rounded-lg bg-surface-2 px-2 py-1.5">
+        <div className="mt-1.5 rounded-md bg-surface-2 px-1.5 py-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="truncate text-[10px] font-bold text-texto-2">{t('modelo.custoTecnico')}</p>
-            <p className="shrink-0 text-xs font-black tabular-nums text-ink">{moeda(custo, formato)}</p>
+            <p className="truncate text-[9px] font-bold text-texto-2">{t('modelo.custoTecnico')}</p>
+            <p className="shrink-0 text-[10px] font-black tabular-nums text-ink">{moeda(custo, formato)}</p>
           </div>
         </div>
 
-        <div className="mt-2 grid grid-cols-3 gap-1.5">
-          <Link to={`/modelos/${modelo.id}`} className="flex h-8 items-center justify-center rounded-lg border border-borda text-texto-2 hover:bg-surface-2 hover:text-ink" title={t('acoes.ver')}>
+        <div className="mt-1.5 grid grid-cols-3 gap-1">
+          <Link to={`/modelos/${modelo.id}`} className="flex h-5 items-center justify-center rounded-md border border-borda text-texto-2 hover:bg-surface-2 hover:text-ink" title={t('acoes.ver')}>
             <Icone d={ICONES.olho} />
           </Link>
-          <Link to={`/calculadora?modelo=${modelo.id}`} className="flex h-8 items-center justify-center rounded-lg border border-borda text-texto-2 hover:bg-surface-2 hover:text-brand-roxo" title={t('modelo.usarNoCalculo')}>
+          <Link to={`/calculadora?modelo=${modelo.id}`} className="flex h-5 items-center justify-center rounded-md border border-borda text-texto-2 hover:bg-surface-2 hover:text-brand-roxo" title={t('modelo.usarNoCalculo')}>
             <Icone d={ICONES.calc} />
           </Link>
           {podeEditar ? (
-            <button type="button" onClick={(e) => { e.stopPropagation(); onEditar(); }} className="flex h-8 items-center justify-center rounded-lg border border-borda text-texto-2 hover:bg-surface-2 hover:text-ink" title={t('acoes.editar')}>
+            <button type="button" onClick={(e) => { e.stopPropagation(); onEditar(); }} className="flex h-5 items-center justify-center rounded-md border border-borda text-texto-2 hover:bg-surface-2 hover:text-ink" title={t('acoes.editar')}>
               <Icone d={ICONES.edit} />
             </button>
           ) : (
-            <button type="button" className="flex h-8 items-center justify-center rounded-lg border border-borda text-texto-2" title={t('acoes.ver')}>
+            <button type="button" className="flex h-5 items-center justify-center rounded-md border border-borda text-texto-2" title={t('acoes.ver')}>
               <Icone d={ICONES.dots} />
             </button>
           )}
@@ -541,15 +551,28 @@ function custoMaterial(m?: MaterialRef) {
   return Number(m.custo_medio) > 0 ? Number(m.custo_medio) : Number(m.custo_unitario);
 }
 
-function custoTecnico(m: Modelo3D, material?: MaterialRef, impressora?: ImpressoraRef) {
+function custoTecnico(m: Modelo3D, material?: MaterialRef, impressora?: ImpressoraRef, tarifaKwh = 0) {
   const materialTotal = Math.round(pesoTotal(m) * custoMaterial(material));
   if (!impressora || Number(m.tempo_impressao_min) <= 0) return materialTotal;
   const amortizacaoHora = Number(impressora.vida_util_horas) > 0
     ? Number(impressora.valor_aquisicao) / Number(impressora.vida_util_horas)
     : 0;
-  const maquina = Math.round((Number(m.tempo_impressao_min) / 60) * (amortizacaoHora + Number(impressora.manutencao_hora)));
+  const horas = Number(m.tempo_impressao_min) / 60;
+  const maquina = Math.round(horas * (amortizacaoHora + Number(impressora.manutencao_hora)));
+  const energia = Math.round(((Number(impressora.consumo_w) / 1000) * horas) * tarifaKwh);
   const salvo = Number(m.custo_estimado || m.custo_real_medio || 0);
-  return salvo > 0 ? salvo : materialTotal + maquina;
+  return salvo > 0 ? salvo : materialTotal + maquina + energia;
+}
+
+function tarifaDaImpressora(
+  impressora: ImpressoraRef | undefined,
+  energiasPorId: Map<string, { id: string; tarifa_kwh: number }>,
+  energias: { id: string; tarifa_kwh: number }[],
+) {
+  if (impressora?.perfil_energia_id) {
+    return Number(energiasPorId.get(impressora.perfil_energia_id)?.tarifa_kwh ?? 0);
+  }
+  return Number(energias[0]?.tarifa_kwh ?? 0);
 }
 
 function formatarMaterial(valor: number, tecnologia: 'fdm' | 'resina', locale: string) {

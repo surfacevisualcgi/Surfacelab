@@ -1,10 +1,9 @@
 /**
- * Novo Produto em STEPPER (modal 02 do v2): Informações → Composição →
- * Preço & detalhes → Revisão. Coleta tudo em memória e grava de uma vez ao
- * finalizar (produto + composicao_item dos modelos escolhidos), evitando
- * produtos órfãos. Também exporta o modal de EDIÇÃO de identidade.
+ * Formularios de produto.
+ * Produto e o agrupador comercial; variacao/SKU e a unidade vendavel ligada a
+ * um modelo 3D tecnico quando existir.
  */
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
@@ -30,13 +29,47 @@ interface DadosProduto {
   preco_praticado: string;
 }
 
+interface ModeloSkuRef {
+  id: string;
+  nome: string;
+  codigo_interno: string | null;
+  fotos: string[];
+  dimensoes: string | null;
+  largura_mm: number | null;
+  profundidade_mm: number | null;
+  altura_mm: number | null;
+  peso_peca_g: number;
+  peso_suporte_g: number;
+  peso_purga_g: number;
+  peso_desperdicio_g: number;
+}
+
+interface SkuInicial {
+  modelo_id: string;
+  nome: string;
+  codigo: string;
+  tamanho: string;
+  cor_nome: string;
+  cor_hex: string;
+  preco: string;
+  estoque: string;
+}
+
 const VAZIO: DadosProduto = {
-  nome: '', sku: '', categoria_id: '', descricao: '', disponibilidade: 'sob_demanda',
-  tags: '', dimensoes: '', peso_g: '', material_principal: '',
-  custo_desenvolvimento: '', qtd_planejada_rateio: '', preco_praticado: '',
+  nome: '',
+  sku: '',
+  categoria_id: '',
+  descricao: '',
+  disponibilidade: 'sob_demanda',
+  tags: '',
+  dimensoes: '',
+  peso_g: '',
+  material_principal: '',
+  custo_desenvolvimento: '',
+  qtd_planejada_rateio: '',
+  preco_praticado: '',
 };
 
-/** monta o payload do banco a partir do estado do formulário */
 function paraPayload(d: DadosProduto) {
   return {
     nome: d.nome.trim(),
@@ -54,30 +87,41 @@ function paraPayload(d: DadosProduto) {
   };
 }
 
-// ----------------------------------------------------------- Novo (stepper)
 export function ModalNovoProduto({ aberto, onFechar }: { aberto: boolean; onFechar: () => void }) {
   const { t } = useTranslation();
   const { ativa } = useAuth();
   const navigate = useNavigate();
-  const crud = useCrud('produto', ['v_produto']);
-  const modelos = useLista<{ id: string; nome: string }>('modelo_3d', { ordem: 'nome', desc: false });
+  const crud = useCrud('produto', ['v_produto', 'variacao']);
+  const modelos = useLista<ModeloSkuRef>('modelo_3d', {
+    ordem: 'nome',
+    desc: false,
+    selecao: 'id, nome, codigo_interno, fotos, dimensoes, largura_mm, profundidade_mm, altura_mm, peso_peca_g, peso_suporte_g, peso_purga_g, peso_desperdicio_g',
+  });
 
   const [passo, setPasso] = useState(0);
   const [d, setD] = useState<DadosProduto>(VAZIO);
-  const [comp, setComp] = useState<{ modelo_id: string; quantidade: number }[]>([]);
+  const [skus, setSkus] = useState<SkuInicial[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
+  const modelosPorId = useMemo(() => new Map((modelos.data ?? []).map((m) => [m.id, m])), [modelos.data]);
   const set = (campo: keyof DadosProduto, v: string) => setD((x) => ({ ...x, [campo]: v }));
-  const passos = [t('novoProduto.passoInfo'), t('novoProduto.passoComposicao'), t('novoProduto.passoPreco'), t('novoProduto.passoRevisao')];
+  const passos = [t('novoProduto.passoInfo'), 'Modelos 3D e SKUs', t('novoProduto.passoPreco'), t('novoProduto.passoRevisao')];
 
   function fechar() {
-    setPasso(0); setD(VAZIO); setComp([]); setErro(null); onFechar();
+    setPasso(0);
+    setD(VAZIO);
+    setSkus([]);
+    setErro(null);
+    onFechar();
   }
 
   function avancar() {
     setErro(null);
-    if (passo === 0 && !d.nome.trim()) { setErro(t('novoProduto.semNome')); return; }
+    if (passo === 0 && !d.nome.trim()) {
+      setErro(t('novoProduto.semNome'));
+      return;
+    }
     setPasso((p) => Math.min(3, p + 1));
   }
 
@@ -86,13 +130,31 @@ export function ModalNovoProduto({ aberto, onFechar }: { aberto: boolean; onFech
     setErro(null);
     try {
       const { id } = await crud.criar.mutateAsync({ ...paraPayload(d), status: 'ativo' });
-      // composição inicial: modelos impressos escolhidos
-      const linhas = comp.filter((c) => c.modelo_id).map((c) => ({
-        tenant_id: ativa?.tenant_id, produto_id: id, tipo: 'modelo_impresso',
-        modelo_id: c.modelo_id, quantidade: c.quantidade || 1, unidade: 'un',
-      }));
-      if (linhas.length > 0) {
-        const { error } = await supabase.from('composicao_item').insert(linhas);
+      const skusValidos = skus.filter((s) => s.modelo_id);
+      const linhasSku = skusValidos.map((s, indice) => {
+        const modelo = modelosPorId.get(s.modelo_id);
+        return {
+          tenant_id: ativa?.tenant_id,
+          produto_id: id,
+          nome: s.nome.trim() || modelo?.nome || 'Variacao',
+          codigo: s.codigo.trim() || gerarSkuInicial(d.nome, modelo, indice),
+          modelo_id: s.modelo_id,
+          tamanho: s.tamanho || tamanhoModelo(modelo),
+          preco: paraCentavos(s.preco || d.preco_praticado || '0'),
+          estoque: Number(s.estoque || 0),
+          status: 'ativo',
+          venda_status: Number(s.estoque || 0) > 0 ? 'em_estoque' : 'sob_encomenda',
+          ordem: indice + 1,
+          cor_nome: s.cor_nome || null,
+          cor_hex: s.cor_hex || null,
+          foto: modelo?.fotos?.[0] ?? null,
+          fotos: modelo?.fotos ?? [],
+          dimensoes: tamanhoModelo(modelo),
+          peso_g: modelo ? pesoModelo(modelo) : null,
+        };
+      });
+      if (linhasSku.length > 0) {
+        const { error } = await supabase.from('variacao').insert(linhasSku);
         if (error) throw error;
       }
       fechar();
@@ -105,14 +167,13 @@ export function ModalNovoProduto({ aberto, onFechar }: { aberto: boolean; onFech
   }
 
   return (
-    <Modal aberto={aberto} titulo={t('produto.novo')} onFechar={fechar} largura="max-w-xl">
-      {/* indicador de passos */}
+    <Modal aberto={aberto} titulo={t('produto.novo')} onFechar={fechar} largura="max-w-4xl">
       <div className="mb-4 flex items-center gap-1">
         {passos.map((nome, i) => (
-          <div key={i} className="flex flex-1 items-center gap-1">
+          <div key={nome} className="flex flex-1 items-center gap-1">
             <span className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
               i < passo ? 'bg-ok text-white' : i === passo ? 'grad-acento text-white' : 'bg-surface-2 text-texto-2'
-            }`}>{i < passo ? '✓' : i + 1}</span>
+            }`}>{i < passo ? 'ok' : i + 1}</span>
             <span className={`truncate text-[11px] font-semibold ${i === passo ? 'text-ink' : 'text-texto-2'}`}>{nome}</span>
             {i < passos.length - 1 && <span className="h-px flex-1 bg-borda" />}
           </div>
@@ -124,7 +185,7 @@ export function ModalNovoProduto({ aberto, onFechar }: { aberto: boolean; onFech
           <Campo rotulo={t('produto.nome')}>
             <Entrada value={d.nome} onChange={(e) => set('nome', e.target.value)} autoFocus />
           </Campo>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Campo rotulo={t('produto.sku')}><Entrada value={d.sku} onChange={(e) => set('sku', e.target.value)} /></Campo>
             <Campo rotulo={t('novoProduto.tipo')}>
               <Selecao value={d.disponibilidade} onChange={(e) => set('disponibilidade', e.target.value)}>
@@ -141,44 +202,65 @@ export function ModalNovoProduto({ aberto, onFechar }: { aberto: boolean; onFech
               className="w-full rounded-lg border border-borda bg-white px-3 py-2 text-sm" />
           </Campo>
           <Campo rotulo={t('novoProduto.tags')}>
-            <Entrada value={d.tags} onChange={(e) => set('tags', e.target.value)} placeholder="luminária, decoração, presente" />
+            <Entrada value={d.tags} onChange={(e) => set('tags', e.target.value)} placeholder="porta-joias, decoracao, presente" />
           </Campo>
         </div>
       )}
 
       {passo === 1 && (
-        <div className="space-y-2">
-          <p className="text-xs text-texto-2">{t('novoProduto.semModelos')}</p>
-          {comp.map((c, i) => (
-            <div key={i} className="grid grid-cols-[1fr_80px_32px] items-center gap-2">
-              <Selecao value={c.modelo_id}
-                onChange={(e) => setComp(comp.map((x, j) => j === i ? { ...x, modelo_id: e.target.value } : x))}>
-                <option value="">—</option>
-                {(modelos.data ?? []).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
-              </Selecao>
-              <Entrada type="number" min="1" step="any" value={c.quantidade}
-                onChange={(e) => setComp(comp.map((x, j) => j === i ? { ...x, quantidade: Number(e.target.value) } : x))} />
-              <button type="button" className="text-texto-2 hover:text-erro"
-                onClick={() => setComp(comp.filter((_, j) => j !== i))}>✕</button>
-            </div>
-          ))}
-          <Botao type="button" variante="secundario" className="!px-2.5 !py-1.5 !text-xs"
-            onClick={() => setComp([...comp, { modelo_id: '', quantidade: 1 }])}>
-            + {t('novoProduto.addModelo')}
+        <div className="space-y-3">
+          <p className="text-xs text-texto-2">
+            Selecione modelos 3D ja cadastrados. Cada modelo selecionado vira uma variacao/SKU vendavel com ponte tecnica para custo, peso e dimensoes.
+          </p>
+          {skus.map((sku, i) => {
+            const modelo = modelosPorId.get(sku.modelo_id);
+            return (
+              <div key={`${sku.modelo_id || 'novo'}-${i}`} className="rounded-xl border border-borda bg-surface-2 p-3">
+                <div className="grid gap-2 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_120px_90px_32px]">
+                  <Selecao
+                    value={sku.modelo_id}
+                    onChange={(e) => setSkus(skus.map((x, j) => j === i ? skuDaSelecao(modelosPorId.get(e.target.value), d.nome, j, x) : x))}
+                  >
+                    <option value="">Selecione um modelo 3D</option>
+                    {(modelos.data ?? []).map((m) => <option key={m.id} value={m.id}>{[m.codigo_interno, m.nome].filter(Boolean).join(' - ')}</option>)}
+                  </Selecao>
+                  <Entrada value={sku.nome} onChange={(e) => setSkus(skus.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} placeholder="Nome da variacao" />
+                  <Entrada value={sku.codigo} onChange={(e) => setSkus(skus.map((x, j) => j === i ? { ...x, codigo: e.target.value } : x))} placeholder="SKU" />
+                  <Entrada value={sku.estoque} onChange={(e) => setSkus(skus.map((x, j) => j === i ? { ...x, estoque: e.target.value } : x))} type="number" min="0" placeholder="Estoque" />
+                  <button type="button" className="text-texto-2 hover:text-erro" onClick={() => setSkus(skus.filter((_, j) => j !== i))}>x</button>
+                </div>
+                <div className="mt-2 grid gap-2 md:grid-cols-4">
+                  <Entrada value={sku.tamanho} onChange={(e) => setSkus(skus.map((x, j) => j === i ? { ...x, tamanho: e.target.value } : x))} placeholder="Tamanho/dimensoes" />
+                  <Entrada value={sku.cor_nome} onChange={(e) => setSkus(skus.map((x, j) => j === i ? { ...x, cor_nome: e.target.value } : x))} placeholder="Cor" />
+                  <input type="color" value={sku.cor_hex || '#b9a0e8'} onChange={(e) => setSkus(skus.map((x, j) => j === i ? { ...x, cor_hex: e.target.value } : x))} className="h-10 w-full rounded-lg border border-borda bg-white p-1" />
+                  <EntradaDinheiro value={sku.preco} onChange={(e) => setSkus(skus.map((x, j) => j === i ? { ...x, preco: e.target.value } : x))} />
+                </div>
+                {modelo && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <Etiqueta>{tamanhoModelo(modelo) || 'Sem dimensoes'}</Etiqueta>
+                    <Etiqueta>{pesoModelo(modelo).toLocaleString('pt-BR')} g</Etiqueta>
+                    {modelo.codigo_interno && <Etiqueta>{modelo.codigo_interno}</Etiqueta>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <Botao type="button" variante="secundario" className="!px-2.5 !py-1.5 !text-xs" onClick={() => setSkus([...skus, skuDaSelecao(null, d.nome, skus.length)])}>
+            + Adicionar SKU a partir de modelo 3D
           </Botao>
         </div>
       )}
 
       {passo === 2 && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Campo rotulo={t('novoProduto.precoPraticado')}>
             <EntradaDinheiro value={d.preco_praticado} onChange={(e) => set('preco_praticado', e.target.value)} />
           </Campo>
           <Campo rotulo={t('novoProduto.materialPrincipal')}>
-            <Entrada value={d.material_principal} onChange={(e) => set('material_principal', e.target.value)} placeholder="PLA, PETG…" />
+            <Entrada value={d.material_principal} onChange={(e) => set('material_principal', e.target.value)} placeholder="PLA, PETG" />
           </Campo>
           <Campo rotulo={t('novoProduto.dimensoes')}>
-            <Entrada value={d.dimensoes} onChange={(e) => set('dimensoes', e.target.value)} placeholder="14 × 14 × 21 cm" />
+            <Entrada value={d.dimensoes} onChange={(e) => set('dimensoes', e.target.value)} placeholder="140 x 140 x 210 mm" />
           </Campo>
           <Campo rotulo={t('novoProduto.peso')}>
             <Entrada type="number" min="0" step="any" value={d.peso_g} onChange={(e) => set('peso_g', e.target.value)} />
@@ -195,11 +277,11 @@ export function ModalNovoProduto({ aberto, onFechar }: { aberto: boolean; onFech
       {passo === 3 && (
         <div className="space-y-2 text-sm">
           <p className="mb-1 text-xs text-texto-2">{t('novoProduto.revisaoDica')}</p>
-          <ResumoLinha rotulo={t('produto.nome')} valor={d.nome || '—'} />
-          <ResumoLinha rotulo={t('produto.sku')} valor={d.sku || '—'} />
+          <ResumoLinha rotulo={t('produto.nome')} valor={d.nome || '-'} />
+          <ResumoLinha rotulo={t('produto.sku')} valor={d.sku || '-'} />
           <ResumoLinha rotulo={t('novoProduto.tipo')} valor={t(`produto.dispLabel.${d.disponibilidade}`)} />
-          <ResumoLinha rotulo={t('novoProduto.modelosImpressos')} valor={`${comp.filter((c) => c.modelo_id).length}`} />
-          <ResumoLinha rotulo={t('novoProduto.precoPraticado')} valor={d.preco_praticado ? `R$ ${d.preco_praticado}` : '—'} />
+          <ResumoLinha rotulo="SKUs ligados a modelos 3D" valor={`${skus.filter((s) => s.modelo_id).length}`} />
+          <ResumoLinha rotulo={t('novoProduto.precoPraticado')} valor={d.preco_praticado ? `R$ ${d.preco_praticado}` : '-'} />
         </div>
       )}
 
@@ -209,7 +291,7 @@ export function ModalNovoProduto({ aberto, onFechar }: { aberto: boolean; onFech
           {passo === 0 ? t('acoes.cancelar') : t('novoProduto.voltar')}
         </Botao>
         {passo < 3 ? (
-          <Botao type="button" onClick={avancar}>{t('novoProduto.continuar')} →</Botao>
+          <Botao type="button" onClick={avancar}>{t('novoProduto.continuar')} -&gt;</Botao>
         ) : (
           <Botao type="button" variante="acento" disabled={salvando} onClick={finalizar}>
             {salvando ? t('estados.salvando') : t('novoProduto.criar')}
@@ -229,7 +311,6 @@ function ResumoLinha({ rotulo, valor }: { rotulo: string; valor: string }) {
   );
 }
 
-// ------------------------------------------------- Editar identidade (modal)
 export function ModalEditarProduto({ produto, aberto, onFechar, onSalvo }: {
   produto: ProdutoView & { descricao?: string | null; categoria_id?: string | null; dimensoes?: string | null;
     peso_g?: number | null; material_principal?: string | null; tags?: string[]; custo_desenvolvimento?: number | null;
@@ -323,4 +404,43 @@ export function ModalEditarProduto({ produto, aberto, onFechar, onSalvo }: {
       <p className="mt-2 text-[11px] text-texto-2"><Etiqueta>dica</Etiqueta> {t('produto.dicaComposicao')}</p>
     </Modal>
   );
+}
+
+function skuDaSelecao(modelo: ModeloSkuRef | undefined | null, produtoNome: string, indice: number, atual?: SkuInicial): SkuInicial {
+  return {
+    modelo_id: modelo?.id ?? '',
+    nome: atual?.nome || modelo?.nome || '',
+    codigo: atual?.codigo || gerarSkuInicial(produtoNome, modelo, indice),
+    tamanho: atual?.tamanho || tamanhoModelo(modelo),
+    cor_nome: atual?.cor_nome || '',
+    cor_hex: atual?.cor_hex || '#b9a0e8',
+    preco: atual?.preco || '',
+    estoque: atual?.estoque || '0',
+  };
+}
+
+function tamanhoModelo(modelo?: ModeloSkuRef | null) {
+  if (!modelo) return '';
+  if (modelo.dimensoes) return modelo.dimensoes;
+  const dims = [modelo.largura_mm, modelo.profundidade_mm, modelo.altura_mm].filter((v) => v != null && Number(v) > 0);
+  return dims.length ? `${dims.join(' x ')} mm` : '';
+}
+
+function pesoModelo(modelo: ModeloSkuRef) {
+  return Number(modelo.peso_peca_g || 0)
+    + Number(modelo.peso_suporte_g || 0)
+    + Number(modelo.peso_purga_g || 0)
+    + Number(modelo.peso_desperdicio_g || 0);
+}
+
+function gerarSkuInicial(produtoNome: string, modelo?: ModeloSkuRef | null, indice = 0) {
+  const base = modelo?.codigo_interno || modelo?.nome || produtoNome || 'SKU';
+  const prefixo = base
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toUpperCase()
+    .slice(0, 24);
+  return `${prefixo || 'SKU'}-${String(indice + 1).padStart(3, '0')}`;
 }

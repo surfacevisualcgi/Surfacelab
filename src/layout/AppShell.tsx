@@ -51,9 +51,11 @@ export function AppShell() {
   const [empresasAberto, setEmpresasAberto] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const telaCheia = location.pathname.startsWith('/modelos') || location.pathname.startsWith('/estoque') || location.pathname.startsWith('/cadastros') || location.pathname.startsWith('/pedidos') || location.pathname.startsWith('/clientes') || location.pathname.startsWith('/orcamentos') || location.pathname.startsWith('/financeiro') || location.pathname.startsWith('/calculadora') || location.pathname.startsWith('/creator-lab');
+  const telaCheia = location.pathname.startsWith('/modelos') || location.pathname.startsWith('/produtos') || location.pathname.startsWith('/canais') || location.pathname.startsWith('/estoque') || location.pathname.startsWith('/cadastros') || location.pathname.startsWith('/pedidos') || location.pathname.startsWith('/clientes') || location.pathname.startsWith('/orcamentos') || location.pathname.startsWith('/financeiro') || location.pathname.startsWith('/calculadora') || location.pathname.startsWith('/creator-lab');
   const creatorLabAtivo = location.pathname.startsWith('/creator-lab');
+  const canaisAtivo = location.pathname.startsWith('/canais');
   const [creatorLabAberto, setCreatorLabAberto] = useState(creatorLabAtivo);
+  const [canaisAberto, setCanaisAberto] = useState(canaisAtivo);
 
   const itens: ItemNav[] = [
     { para: '/', rotulo: t('nav.visaoGeral'), modulo: 'relatorios', icone: ICONES.casa },
@@ -75,6 +77,15 @@ export function AppShell() {
     { para: '/creator-lab/radar', rotulo: 'Radar', modulo: 'relatorios', icone: ICONES.radar },
   ];
   const creatorLabVisiveis = itensCreatorLab.filter((i) => pode(i.modulo));
+  const canais = [
+    { para: '/canais/shopify', rotulo: 'Shopify' },
+    { para: '/canais/tiktok-shop', rotulo: 'TikTok Shop' },
+    { para: '/canais/shopee', rotulo: 'Shopee' },
+    { para: '/canais/amazon', rotulo: 'Amazon' },
+    { para: '/canais/mercado-livre', rotulo: 'Mercado Livre' },
+    { para: '/canais/loja-propria', rotulo: 'Loja propria' },
+    { para: '/canais/venda-direta', rotulo: 'Venda direta' },
+  ];
 
   const iniciais = (session?.user?.user_metadata?.nome_exibicao as string | undefined)
     ?.split(' ')
@@ -90,22 +101,69 @@ export function AppShell() {
   const nav = (
     <nav className="flex flex-col gap-0.5 px-2">
       {visiveis.map((item) => (
-        <NavLink
-          key={item.para}
-          to={item.para}
-          end={item.para === '/'}
-          onClick={() => setMenuAberto(false)}
-          className={({ isActive }) =>
-            `flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors ${
-              isActive
-                ? 'sidebar-link-active grad-acento shadow-sm'
-                : 'sidebar-link'
-            }`
-          }
-        >
-          <Icone d={item.icone} />
-          {item.rotulo}
-        </NavLink>
+        <div key={item.para}>
+          <NavLink
+            to={item.para}
+            end={item.para === '/'}
+            onClick={() => setMenuAberto(false)}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors ${
+                isActive
+                  ? 'sidebar-link-active grad-acento shadow-sm'
+                  : 'sidebar-link'
+              }`
+            }
+          >
+            <Icone d={item.icone} />
+            {item.rotulo}
+          </NavLink>
+          {item.para === '/produtos' && pode('produtos') && (
+            <div className="mt-1">
+              <button
+                type="button"
+                onClick={() => setCanaisAberto((aberto) => !aberto)}
+                aria-expanded={canaisAberto}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-semibold transition-colors ${
+                  canaisAtivo ? 'sidebar-link-active grad-acento shadow-sm' : 'sidebar-link'
+                }`}
+              >
+                <Icone d={ICONES.radar} />
+                <span className="min-w-0 flex-1">Canais</span>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className={`shrink-0 transition-transform ${canaisAberto ? 'rotate-180' : ''}`}
+                  aria-hidden
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+              {canaisAberto && (
+                <div className="ml-4 mt-1 flex flex-col gap-0.5 border-l sidebar-border pl-2">
+                  {canais.map((canal) => (
+                    <NavLink
+                      key={canal.para}
+                      to={canal.para}
+                      onClick={() => setMenuAberto(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                          isActive ? 'sidebar-link-active bg-white/10' : 'sidebar-link'
+                        }`
+                      }
+                    >
+                      <span className="size-1.5 rounded-full bg-current opacity-70" />
+                      {canal.rotulo}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       ))}
       {creatorLabVisiveis.length > 0 && (
         <div className="mt-1">

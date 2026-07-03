@@ -8,6 +8,7 @@ import { PaginaModelos } from './features/modelos/PaginaModelos';
 import { PaginaModeloDetalhe } from './features/modelos/PaginaModeloDetalhe';
 import { PaginaProdutos } from './features/produtos/PaginaProdutos';
 import { PaginaProdutoDetalhe } from './features/produtos/PaginaProdutoDetalhe';
+import { PaginaCanais } from './features/canais/PaginaCanais';
 import { PaginaCalculadora } from './features/calculadora/PaginaCalculadora';
 import { PaginaOrcamentos } from './features/orcamentos/PaginaOrcamentos';
 import { PaginaOrcamentoDetalhe } from './features/orcamentos/PaginaOrcamentoDetalhe';
@@ -66,6 +67,8 @@ export default function App() {
             <Route path="/modelos/:id" element={<PaginaModeloDetalhe />} />
             <Route path="/produtos" element={<PaginaProdutos />} />
             <Route path="/produtos/:id" element={<PaginaProdutoDetalhe />} />
+            <Route path="/canais" element={<Navigate to="/canais/shopify" replace />} />
+            <Route path="/canais/:canal" element={<PaginaCanais />} />
             <Route path="/calculadora" element={<PaginaCalculadora />} />
             <Route path="/orcamentos" element={<PaginaOrcamentos />} />
             <Route path="/orcamentos/:id" element={<PaginaOrcamentoDetalhe />} />
