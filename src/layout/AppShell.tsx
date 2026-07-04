@@ -270,7 +270,7 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* topbar */}
         <header
-          className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-borda bg-white/90 px-4 pb-2.5 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] backdrop-blur"
+          className="app-topbar sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-borda bg-white/90 px-4 backdrop-blur"
         >
           <div className="flex items-center gap-2">
             <button

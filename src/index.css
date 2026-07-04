@@ -127,4 +127,15 @@
   .sidebar-border {
     border-color: color-mix(in srgb, var(--sidebar-text) 12%, transparent);
   }
+
+  .app-topbar {
+    padding-bottom: 0.625rem;
+    padding-top: 0.625rem;
+  }
+
+  @media (display-mode: standalone) {
+    .app-topbar {
+      padding-top: max(2rem, calc(env(safe-area-inset-top, 0px) + 0.625rem));
+    }
+  }
 }
