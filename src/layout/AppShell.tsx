@@ -269,7 +269,9 @@ export function AppShell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* topbar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-borda bg-white/90 px-4 py-2.5 backdrop-blur">
+        <header
+          className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-borda bg-white/90 px-4 pb-2.5 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] backdrop-blur"
+        >
           <div className="flex items-center gap-2">
             <button
               className="rounded-md p-1.5 text-ink hover:bg-surface-2 lg:hidden"
@@ -351,7 +353,7 @@ export function AppShell() {
         </main>
 
         {/* bottom nav mobile — 5 itens, Calculadora central em destaque (v2) */}
-        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-borda bg-white/95 backdrop-blur lg:hidden"
+        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-borda bg-white/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur lg:hidden"
           aria-label="Navegação principal">
           <div className="mx-auto grid max-w-md grid-cols-5">
             {[
