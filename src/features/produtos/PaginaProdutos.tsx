@@ -112,6 +112,7 @@ export function PaginaProdutos() {
   const [filtroColecao, setFiltroColecao] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroOperacao, setFiltroOperacao] = useState('');
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [produtoParaExcluir, setProdutoParaExcluir] = useState<ProdutoOperacional | null>(null);
 
   const categoriasProduto = (categorias.data ?? []).filter((c) => c.escopo === 'produto');
@@ -191,6 +192,7 @@ export function PaginaProdutos() {
     estoque: produtos.reduce((s, p) => s + p.estoqueLocal, 0),
     pendencias: produtos.filter((p) => p.pendencias.length > 0).length,
   }), [produtos]);
+  const temFiltros = !!(filtroDisp || filtroCategoria || filtroColecao || filtroStatus || filtroOperacao);
 
   const skusFiltrados = useMemo(() => {
     const produtosPorId = new Map(filtrados.map((p) => [p.id, p]));
@@ -213,28 +215,28 @@ export function PaginaProdutos() {
   if (lista.isError) return <EstadoErro onRetry={() => lista.refetch()} />;
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 xl:h-[calc(100dvh-112px)] xl:overflow-hidden">
+    <div className="flex min-h-0 flex-col gap-3 sm:gap-4 xl:h-[calc(100dvh-112px)] xl:overflow-hidden">
       <section className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-extrabold uppercase tracking-wide text-texto-2">Catalogo mestre</p>
           <h1 className="text-2xl font-extrabold tracking-tight text-ink">Produtos</h1>
-          <p className="mt-1 max-w-3xl text-sm text-texto-2">
+          <p className="mt-1 hidden max-w-3xl text-sm text-texto-2 sm:block">
             Gerencie o que vende, SKUs, estoque local, composicao, preco e preparacao para canais.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <Botao variante="secundario" onClick={() => navigate('/canais/shopify')}>
             <Icone d={ICONS.channels} /> Canais
           </Botao>
           {pode('produtos', 'criar') && (
-            <Botao onClick={() => setNovo(true)}>
+            <Botao className="flex-1 sm:flex-none" onClick={() => setNovo(true)}>
               <Icone d={ICONS.plus} /> Novo produto
             </Botao>
           )}
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 xl:grid-cols-4">
         <KpiProduto rotulo="Produtos ativos" valor={kpis.ativos.toLocaleString()} detalhe="cadastros vendaveis" tom="blue" />
         <KpiProduto rotulo="SKUs" valor={kpis.skus.toLocaleString()} detalhe="variacoes cadastradas" tom="purple" />
         <KpiProduto rotulo="Estoque pronto" valor={kpis.estoque.toLocaleString()} detalhe="unidades locais" tom="green" />
@@ -243,28 +245,39 @@ export function PaginaProdutos() {
 
       <section className="rounded-xl border border-borda bg-white p-3 shadow-sm">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_145px_145px_145px_145px_180px]">
-            <Entrada placeholder="Buscar produto, SKU, categoria ou colecao..." value={busca} onChange={(e) => setBusca(e.target.value)} />
-            <Selecao value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex gap-2">
+              <Entrada placeholder="Buscar produto, SKU, categoria ou colecao..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+              <Botao
+                type="button"
+                variante="secundario"
+                className="shrink-0 sm:hidden"
+                onClick={() => setFiltrosAbertos((aberto) => !aberto)}
+              >
+                <Icone d={ICONS.filter} /> {temFiltros ? 'Filtros *' : 'Filtros'}
+              </Botao>
+            </div>
+            <div className={`${filtrosAbertos ? 'grid' : 'hidden'} min-w-0 gap-2 sm:grid sm:grid-cols-2 xl:grid-cols-[145px_145px_145px_145px_180px]`}>
+              <Selecao value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
               <option value="">Todas categorias</option>
               {categoriasProduto.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </Selecao>
-            <Selecao value={filtroColecao} onChange={(e) => setFiltroColecao(e.target.value)}>
+              </Selecao>
+              <Selecao value={filtroColecao} onChange={(e) => setFiltroColecao(e.target.value)}>
               <option value="">Todas colecoes</option>
               {(colecoes.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </Selecao>
-            <Selecao value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
+              </Selecao>
+              <Selecao value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
               <option value="">Todos status</option>
               <option value="ativo">Ativo</option>
               <option value="rascunho">Rascunho</option>
               <option value="arquivado">Arquivado</option>
-            </Selecao>
-            <Selecao value={filtroDisp} onChange={(e) => setFiltroDisp(e.target.value)}>
+              </Selecao>
+              <Selecao value={filtroDisp} onChange={(e) => setFiltroDisp(e.target.value)}>
               <option value="">Disponibilidade</option>
               <option value="pronta_entrega">Pronta entrega</option>
               <option value="sob_demanda">Sob demanda</option>
-            </Selecao>
-            <Selecao value={filtroOperacao} onChange={(e) => setFiltroOperacao(e.target.value)}>
+              </Selecao>
+              <Selecao value={filtroOperacao} onChange={(e) => setFiltroOperacao(e.target.value)}>
               <option value="">Operacao</option>
               <option value="com_estoque">Com estoque</option>
               <option value="sem_estoque">Sem estoque</option>
@@ -274,7 +287,8 @@ export function PaginaProdutos() {
               <option value="margem_baixa">Margem baixa</option>
               <option value="sem_foto">Sem foto</option>
               <option value="sem_sku">Sem SKU</option>
-            </Selecao>
+              </Selecao>
+            </div>
           </div>
           <div className="flex shrink-0 rounded-lg border border-borda bg-surface-2 p-1">
             <button
@@ -412,7 +426,7 @@ function ProdutosCards({
   onAbrir: (produto: ProdutoOperacional) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+    <div className="grid grid-cols-1 gap-2 min-[520px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
       {produtos.map((p) => (
         <article
           key={p.id}
@@ -701,9 +715,9 @@ function KpiProduto({ rotulo, valor, detalhe, tom }: { rotulo: string; valor: st
     plain: 'border-borda bg-white text-ink',
   }[tom];
   return (
-    <div className={`rounded-xl border p-4 shadow-sm ${estilos}`}>
+    <div className={`min-w-36 rounded-xl border p-3 shadow-sm sm:min-w-0 sm:p-4 ${estilos}`}>
       <p className="text-[10px] font-extrabold uppercase tracking-wide text-texto-2">{rotulo}</p>
-      <p className="mt-1 text-2xl font-black tabular-nums">{valor}</p>
+      <p className="mt-1 text-xl font-black tabular-nums sm:text-2xl">{valor}</p>
       <p className="mt-0.5 text-[11px] font-semibold text-texto-2">{detalhe}</p>
     </div>
   );
@@ -779,6 +793,7 @@ function Icone({ d }: { d: string }) {
 
 const ICONS = {
   plus: 'M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z',
+  filter: 'M4 5h16l-6 7v6l-4 2v-8L4 5Z',
   channels: 'M4 4h16v4H4V4Zm0 6h7v10H4V10Zm9 0h7v10h-7V10Z',
   tag: 'M3 11V4h7l11 11-6 6L3 11Zm5-3a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0Z',
   grid: 'M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z',

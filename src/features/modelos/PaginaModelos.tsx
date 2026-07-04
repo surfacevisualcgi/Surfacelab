@@ -119,6 +119,7 @@ export function PaginaModelos() {
   const [filtroCategoria, setFiltroCategoria] = useState('');
   const [filtroMaterial, setFiltroMaterial] = useState('');
   const [filtroTec, setFiltroTec] = useState('');
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [pagina, setPagina] = useState(1);
   const [porPagina, setPorPagina] = useState(10);
@@ -189,7 +190,7 @@ export function PaginaModelos() {
       <section className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-ink">{t('modelo.titulo')}</h1>
-          <p className="mt-1 text-sm text-texto-2">{t('modelo.listaSubtitulo')}</p>
+          <p className="mt-1 hidden text-sm text-texto-2 sm:block">{t('modelo.listaSubtitulo')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Botao variante="secundario" onClick={() => setImportando(true)} disabled={!pode('modelos', 'criar')}>
@@ -205,7 +206,7 @@ export function PaginaModelos() {
 
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <section className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 xl:grid-cols-5">
             <KpiCard icone={ICONES.cubo} tom="blue" rotulo={t('modelo.kpi.ativos')} valor={String(modelos.length)} detalhe={t('modelo.kpi.arquivos')} />
             <KpiCard icone={ICONES.check} tom="green" rotulo={t('modelo.kpi.prontos')} valor={String(kpis.prontos)} detalhe={t('modelo.kpi.completos')} />
             <KpiCard icone={ICONES.alerta} tom={kpis.semImpressora > 0 ? 'red' : 'green'} rotulo={t('modelo.kpi.semImpressora')} valor={String(kpis.semImpressora)} detalhe={t('modelo.kpi.revisao')} />
@@ -221,41 +222,53 @@ export function PaginaModelos() {
                 {filtrados.length} {t('modelo.modelos')}
               </span>
             </div>
-            <div className="flex min-w-0 items-center gap-2">
-              <Entrada
-                value={busca}
-                onChange={(e) => { setBusca(e.target.value); setPagina(1); }}
-                placeholder={t('modelo.buscarPlaceholder')}
-                className="h-10 min-w-0 flex-1"
-              />
-              <Selecao value={filtroCategoria} onChange={(e) => { setFiltroCategoria(e.target.value); setPagina(1); }} className="!h-10 !w-[190px] shrink-0">
-                <option value="">{t('modelo.todasCategorias')}</option>
-                {categoriasModelo.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </Selecao>
-              <Selecao value={filtroTec} onChange={(e) => { setFiltroTec(e.target.value); setPagina(1); }} className="!h-10 !w-[160px] shrink-0">
-                <option value="">{t('modelo.todasTecnologias')}</option>
-                <option value="fdm">FDM</option>
-                <option value="resina">Resina</option>
-              </Selecao>
-              <Selecao value={filtroMaterial} onChange={(e) => { setFiltroMaterial(e.target.value); setPagina(1); }} className="!h-10 !w-[190px] shrink-0">
-                <option value="">{t('modelo.todosMateriais')}</option>
-                {(materiais.data ?? []).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
-              </Selecao>
-              <Botao
-                type="button"
-                variante="secundario"
-                className="h-10 shrink-0"
-                disabled={!comFiltro}
-                onClick={() => {
-                  setBusca('');
-                  setFiltroCategoria('');
-                  setFiltroMaterial('');
-                  setFiltroTec('');
-                  setPagina(1);
-                }}
-              >
-                <Icone d={ICONES.filtro} /> Limpar
-              </Botao>
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex min-w-0 gap-2">
+                <Entrada
+                  value={busca}
+                  onChange={(e) => { setBusca(e.target.value); setPagina(1); }}
+                  placeholder={t('modelo.buscarPlaceholder')}
+                  className="h-10 min-w-0 flex-1"
+                />
+                <Botao
+                  type="button"
+                  variante="secundario"
+                  className="h-10 shrink-0 sm:hidden"
+                  onClick={() => setFiltrosAbertos((aberto) => !aberto)}
+                >
+                  <Icone d={ICONES.filtro} /> {comFiltro ? 'Filtros *' : 'Filtros'}
+                </Botao>
+              </div>
+              <div className={`${filtrosAbertos ? 'flex' : 'hidden'} min-w-0 flex-col gap-2 sm:flex sm:flex-row sm:items-center`}>
+                <Selecao value={filtroCategoria} onChange={(e) => { setFiltroCategoria(e.target.value); setPagina(1); }} className="!h-10 sm:!w-[190px] sm:shrink-0">
+                  <option value="">{t('modelo.todasCategorias')}</option>
+                  {categoriasModelo.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </Selecao>
+                <Selecao value={filtroTec} onChange={(e) => { setFiltroTec(e.target.value); setPagina(1); }} className="!h-10 sm:!w-[160px] sm:shrink-0">
+                  <option value="">{t('modelo.todasTecnologias')}</option>
+                  <option value="fdm">FDM</option>
+                  <option value="resina">Resina</option>
+                </Selecao>
+                <Selecao value={filtroMaterial} onChange={(e) => { setFiltroMaterial(e.target.value); setPagina(1); }} className="!h-10 sm:!w-[190px] sm:shrink-0">
+                  <option value="">{t('modelo.todosMateriais')}</option>
+                  {(materiais.data ?? []).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                </Selecao>
+                <Botao
+                  type="button"
+                  variante="secundario"
+                  className="h-10 shrink-0"
+                  disabled={!comFiltro}
+                  onClick={() => {
+                    setBusca('');
+                    setFiltroCategoria('');
+                    setFiltroMaterial('');
+                    setFiltroTec('');
+                    setPagina(1);
+                  }}
+                >
+                  <Icone d={ICONES.filtro} /> Limpar
+                </Botao>
+              </div>
             </div>
           </div>
 
@@ -269,7 +282,7 @@ export function PaginaModelos() {
           ) : (
             <>
               <div className="min-h-0 flex-1 overflow-auto bg-transparent pr-1">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+                <div className="grid grid-cols-1 gap-2 min-[520px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
                   {visiveis.map((m) => (
                     <ModeloCard
                       key={m.id}
@@ -502,7 +515,7 @@ function KpiCard({ icone, rotulo, valor, detalhe, tom }: { icone: string; rotulo
     purple: ['bg-brand-roxo/10 text-brand-roxo', 'text-brand-roxo'],
   }[tom];
   return (
-    <div className="rounded-2xl border border-borda bg-white p-3 shadow-sm">
+    <div className="min-w-40 rounded-xl border border-borda bg-white p-3 shadow-sm sm:min-w-0 sm:rounded-2xl">
       <div className="flex items-center gap-3">
         <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${estilos[0]}`}><Icone d={icone} /></span>
         <div className="min-w-0">

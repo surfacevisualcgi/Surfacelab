@@ -262,14 +262,14 @@ export function PaginaProdutoDetalhe() {
   const categoria = categorias.data?.find((c) => c.id === p.categoria_id)?.nome;
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 xl:h-[calc(100dvh-112px)] xl:overflow-hidden">
+    <div className="flex min-h-0 flex-col gap-3 sm:gap-4 xl:h-[calc(100dvh-112px)] xl:overflow-hidden">
       <section className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-[11px] font-extrabold uppercase tracking-wide text-texto-2">Produtos / ficha mestre</p>
           <Entrada
             defaultValue={p.nome}
             disabled={!pode('produtos', 'editar')}
-            className="!h-auto !border-0 !bg-transparent !px-0 !py-0 !text-2xl !font-extrabold !tracking-tight !text-ink shadow-none focus:!border-0"
+            className="!h-auto !min-w-0 !border-0 !bg-transparent !px-0 !py-0 !text-xl !font-extrabold !tracking-tight !text-ink shadow-none focus:!border-0 sm:!text-2xl"
             onBlur={(e) => e.target.value.trim() !== p.nome && salvarProdutoRapido({ nome: e.target.value.trim() || p.nome })}
           />
           <div className="mt-1 flex max-w-sm items-center gap-2">
@@ -292,7 +292,7 @@ export function PaginaProdutoDetalhe() {
             <Etiqueta cor={pendencias.length ? 'amarelo' : 'verde'}>Cadastro {Math.max(0, 100 - pendencias.length * 12)}%</Etiqueta>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-3 flex w-[calc(100%+1.5rem)] gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           <Botao variante="acento" onClick={() => navigate(`/calculadora?produto=${p.id}`)}>
             <Icone d={ICONS.calc} /> Calcular preco
           </Botao>
@@ -475,7 +475,7 @@ function AbaResumo({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="grid gap-3 sm:gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
         <GaleriaFotos
           fotos={produto.fotos ?? []}
           prefixo={`produtos/${produto.id}`}
@@ -483,7 +483,7 @@ function AbaResumo({
           onChange={onFotos}
         />
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
             <ResumoMetrica rotulo="Preco base" valor={preco > 0 ? <Dinheiro centavos={preco} /> : '-'} destaque />
             <ResumoMetrica rotulo="Custo medio" valor={custoMedio > 0 ? <Dinheiro centavos={custoMedio} /> : '-'} />
             <ResumoMetrica rotulo="Margem media" valor={margem != null ? percentual(margem, formato) : '-'} />
@@ -756,7 +756,7 @@ function VariacoesOperacionais({
           </p>
         </div>
         {podeEditar && (
-          <div className="flex flex-wrap gap-2">
+          <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
             <Botao variante="secundario" onClick={() => setGerandoModelos(true)}>
               <Icone d={ICONS.cube} /> Gerar dos modelos 3D
             </Botao>
@@ -769,7 +769,7 @@ function VariacoesOperacionais({
         )}
       </div>
 
-      <div className="mb-3 grid gap-2 sm:grid-cols-3">
+      <div className="-mx-3 mb-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
         <ResumoMetrica rotulo="Variacoes" valor={variacoes.length} />
         <ResumoMetrica rotulo="Estoque total" valor={estoqueTotal.toLocaleString()} />
         <ResumoMetrica rotulo="Composicao" valor={totalComposicao > 0 ? <Dinheiro centavos={totalComposicao} /> : '-'} />
@@ -1701,9 +1701,9 @@ function AbaHistoricoProduto({ produtoId }: { produtoId: string }) {
 
 function ResumoMetrica({ rotulo, valor, destaque = false }: { rotulo: string; valor: React.ReactNode; destaque?: boolean }) {
   return (
-    <Cartao className="p-3">
+    <Cartao className="min-w-36 p-3 sm:min-w-0">
       <p className="text-[10px] font-extrabold uppercase tracking-wide text-texto-2">{rotulo}</p>
-      <p className={`mt-1 truncate text-xl font-black tabular-nums ${destaque ? 'grad-texto' : 'text-ink'}`}>{valor}</p>
+      <p className={`mt-1 truncate text-lg font-black tabular-nums sm:text-xl ${destaque ? 'grad-texto' : 'text-ink'}`}>{valor}</p>
     </Cartao>
   );
 }

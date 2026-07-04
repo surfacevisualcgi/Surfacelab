@@ -346,7 +346,7 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className={`mx-auto w-full flex-1 p-4 pb-24 sm:p-6 lg:pb-6 ${telaCheia ? 'max-w-[calc(100vw-3rem)] 2xl:px-8' : 'max-w-6xl'}`}>
+        <main className={`mx-auto w-full flex-1 px-3 py-4 pb-24 sm:p-6 lg:pb-6 ${telaCheia ? 'max-w-[calc(100vw-1rem)] sm:max-w-[calc(100vw-3rem)] 2xl:px-8' : 'max-w-6xl'}`}>
           <Outlet />
         </main>
 
